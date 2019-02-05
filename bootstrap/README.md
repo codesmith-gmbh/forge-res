@@ -10,3 +10,13 @@ aws --region us-east-1 cloudformation deploy \
     --template-file bootstrap.yaml \
     --capabilities CAPABILITY_IAM
 ```
+
+kick the release of the current commit with the following command
+
+```
+aws --region us-east-1 codebuild start-build \
+    --project-name CodesmithForgeBootstrap \
+    --source-version $(git rev-parse HEAD)
+    --environment-variables-override \
+        name=AWS_REGION,value=eu-west-1,type=PLAINTEXT
+```

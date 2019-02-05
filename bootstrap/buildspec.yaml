@@ -3,4 +3,4 @@ version: 0.2
 phases:
   build:
     commands:
-      - echo "Bootstrap"
+      - echo "Bootstrap in region: ${AWS_REGION}"
