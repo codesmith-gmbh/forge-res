@@ -16,7 +16,7 @@ kick the release of the current commit with the following command
 ```
 aws --region us-east-1 codebuild start-build \
     --project-name CodesmithForgeBootstrap \
-    --source-version $(git rev-parse HEAD)
+    --source-version $(git rev-parse HEAD) \
     --environment-variables-override \
         name=AWS_REGION,value=eu-west-1,type=PLAINTEXT
 ```
