@@ -1,0 +1,13 @@
+{
+  "DomainName": "oort.ch",
+  "Region": "us-east-1",
+  "SubjectAlternativeNames": [
+    "test.oort.ch"
+  ],
+  "Tags": [
+    {
+      "Key": "hyperdrive:project",
+      "Value": "test"
+    }
+  ]
+}

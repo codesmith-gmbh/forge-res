@@ -1,0 +1,25 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: |
+  S3 Bucket for lambda/cf/hyperdrive artifacts.
+  The name for the s3 bucket is constructed as follows: `<region-name>.hyperdrive.<org-domain>`.
+  When instantiated by the hyperdrive utility, the stack name is always `HyperdriveArtifactsBucket`.
+  The bucket is used by the hyperdrive under the path prefix `/hyperdrive` to store artifacts
+  (e.g. SAM packaged lambda functions) and can be used to store other artifacts non related to the
+  hyperdrive under a different path prefix.
+Parameters:
+  OrganisationDomain:
+    Type: String
+    Description: Name of the organisation using the hyperdrive; to create recognisable s3 bucket names.
+Resources:
+  ArtifactBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName:
+        Fn::Sub: "${AWS::Region}.artifacts.hyperdrive.${OrganisationDomain}"
+      VersioningConfiguration:
+        Status: Enabled
+Outputs:
+  ArtifactBucketArn:
+    Value: !GetAtt ArtifactBucket.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-Arn"
