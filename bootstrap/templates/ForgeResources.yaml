@@ -1,0 +1,946 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Hyperdrive Core Resources
+Parameters:
+  Version:
+    Type: String
+#  HyperdriveKmsKeyId:
+#    Type: String
+Resources:
+  # 1. S3 Release Cleanup
+  S3ReleaseCleanup:
+    Type: Custom::S3Cleanup
+    Properties:
+      ServiceToken: !GetAtt S3CleanupFunction.Arn
+      ActiveOnlyOnStackDeletion: false
+      Bucket: !ImportValue ForgeBuckets-ArtifactsBucketName
+      Prefix: !Sub ".forge/${Version}"
+  # 2. Cloudformation custom resources
+  #  CogCondPreAuthRole:
+  #    Type: AWS::IAM::Role
+  #    Properties:
+  #      AssumeRolePolicyDocument:
+  #        Version: "2012-10-17"
+  #        Statement:
+  #          - Effect: "Allow"
+  #            Principal:
+  #              Service: lambda.amazonaws.com
+  #            Action:
+  #              - "sts:AssumeRole"
+  #      ManagedPolicyArns:
+  #        - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+  #      Policies:
+  #        - PolicyName: ssm
+  #          PolicyDocument:
+  #            Version: '2012-10-17'
+  #            Statement:
+  #              - Effect: Allow
+  #                Sid: ssm
+  #                Action:
+  #                  - "ssm:DescribeParameters"
+  #                  - "ssm:GetParametersByPath"
+  #                  - "ssm:GetParameter"
+  #                  - "ssm:GetParameters"
+  #                Resource:
+  #                  - "arn:aws:ssm:*:*:parameter/hyperdrive/cog_cond_pre_auth/*"
+  #  CogCondPreAuthFunction:
+  #    Type: AWS::Serverless::Function
+  #    Properties:
+  #      AutoPublishAlias: live
+  #      CodeUri: ../../dist/linux_amd64/cog_cond_pre_auth
+  #      Runtime: go1.x
+  #      Handler: cog_cond_pre_auth
+  #      Role: !GetAtt CogCondPreAuthRole.Arn
+  #  CogCondPreAuthLogs:
+  #    Type: AWS::Logs::LogGroup
+  #    Properties:
+  #      LogGroupName:
+  #        Fn::Sub:
+  #          - "/aws/lambda/${LambdaName}"
+  #          - LambdaName: !Ref CogCondPreAuthFunction
+  #      RetentionInDays: 90
+  #  CogCondPreAuthPermission:
+  #    Type: AWS::Lambda::Permission
+  #    Properties:
+  #      Action: lambda:InvokeFunction
+  #      FunctionName: !GetAtt CogCondPreAuthFunction.Arn
+  #      Principal: cognito-idp.amazonaws.com
+  #  CfApiKeyRole:
+  #    Type: AWS::IAM::Role
+  #    Properties:
+  #      AssumeRolePolicyDocument:
+  #        Version: "2012-10-17"
+  #        Statement:
+  #          - Effect: "Allow"
+  #            Principal:
+  #              Service: lambda.amazonaws.com
+  #            Action:
+  #              - "sts:AssumeRole"
+  #      ManagedPolicyArns:
+  #        - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+  #      Policies:
+  #        - PolicyName: apikey
+  #          PolicyDocument:
+  #            Version: '2012-10-17'
+  #            Statement:
+  #              - Effect: Allow
+  #                Action:
+  #                  - "apigateway:*"
+  #                Resource:
+  #                  - !Sub "arn:aws:apigateway:${AWS::Region}::/apikeys"
+  #                  - !Sub "arn:aws:apigateway:${AWS::Region}::/apikeys/*"
+  #              - Effect: Allow
+  #                Action:
+  #                  - "cloudformation:DescribeStacks"
+  #                Resource:
+  #                  - "*"
+  #  CfApiKeyFunction:
+  #    Type: AWS::Serverless::Function
+  #    Properties:
+  #      AutoPublishAlias: live
+  #      CodeUri: ../../dist/linux_amd64/cfapikey
+  #      Description: Cloudformation Custom Resource for apg api keys for Cloudfront.
+  #      Handler: cfapikey
+  #      MemorySize: 128
+  #      Role: !GetAtt CfApiKeyRole.Arn
+  #      Runtime: go1.x
+  #      Timeout: 300
+  #  CfApiKeyLogGroup:
+  #    Type: AWS::Logs::LogGroup
+  #    Properties:
+  #      LogGroupName:
+  #        Fn::Sub:
+  #          - "/aws/lambda/${LambdaName}"
+  #          - LambdaName: !Ref CfApiKeyFunction
+  #      RetentionInDays: 90
+  #  CfApiKeyPermission:
+  #    Type: AWS::Lambda::Permission
+  #    Properties:
+  #      Action: lambda:InvokeFunction
+  #      FunctionName: !GetAtt CfApiKeyFunction.Arn
+  #      Principal: cloudformation.amazonaws.com
+  #  CogCondPreAuthSettingsRole:
+  #    Type: AWS::IAM::Role
+  #    Properties:
+  #      AssumeRolePolicyDocument:
+  #        Version: "2012-10-17"
+  #        Statement:
+  #          - Effect: "Allow"
+  #            Principal:
+  #              Service: lambda.amazonaws.com
+  #            Action:
+  #              - "sts:AssumeRole"
+  #      ManagedPolicyArns:
+  #        - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+  #      Policies:
+  #        - PolicyName: ssm
+  #          PolicyDocument:
+  #            Version: '2012-10-17'
+  #            Statement:
+  #              - Effect: Allow
+  #                Sid: ssm
+  #                Action:
+  #                  - "ssm:DeleteParameter"
+  #                  - "ssm:DescribeParameters"
+  #                  - "ssm:GetParametersByPath"
+  #                  - "ssm:GetParameter"
+  #                  - "ssm:GetParameters"
+  #                  - "ssm:PutParameter"
+  #                Resource:
+  #                  - "arn:aws:ssm:*:*:parameter/hyperdrive/cog_cond_pre_auth/*"
+  #  CogCondPreAuthSettingsFunction:
+  #    Type: AWS::Serverless::Function
+  #    Properties:
+  #      AutoPublishAlias: live
+  #      CodeUri: ../../dist/linux_amd64/cog_cond_pre_auth_settings
+  #      Description: Cloudformation Custom Resource for CogCondPreAuthSettings
+  #      Handler: cog_cond_pre_auth_settings
+  #      MemorySize: 128
+  #      Role: !GetAtt CogCondPreAuthSettingsRole.Arn
+  #      Runtime: go1.x
+  #      Timeout: 300
+  #  CogCondPreAuthSettingsLogGroup:
+  #    Type: AWS::Logs::LogGroup
+  #    Properties:
+  #      LogGroupName:
+  #        Fn::Sub:
+  #          - "/aws/lambda/${LambdaName}"
+  #          - LambdaName: !Ref CogCondPreAuthSettingsFunction
+  #      RetentionInDays: 90
+  #  CogCondPreAuthSettingsPermission:
+  #    Type: AWS::Lambda::Permission
+  #    Properties:
+  #      Action: lambda:InvokeFunction
+  #      FunctionName: !GetAtt CogCondPreAuthSettingsFunction.Arn
+  #      Principal: cloudformation.amazonaws.com
+  #  CognitoClientSettingsRole:
+  #    Type: AWS::IAM::Role
+  #    Properties:
+  #      AssumeRolePolicyDocument:
+  #        Version: "2012-10-17"
+  #        Statement:
+  #          - Effect: "Allow"
+  #            Principal:
+  #              Service: lambda.amazonaws.com
+  #            Action:
+  #              - "sts:AssumeRole"
+  #      ManagedPolicyArns:
+  #        - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+  #      Policies:
+  #        - PolicyName: cog
+  #          PolicyDocument:
+  #            Version: '2012-10-17'
+  #            Statement:
+  #              - Effect: Allow
+  #                Action:
+  #                  - "cognito-idp:UpdateUserPoolClient"
+  #                Resource:
+  #                  - "*"
+  #  CognitoClientSettingsFunction:
+  #    Type: AWS::Serverless::Function
+  #    Properties:
+  #      AutoPublishAlias: live
+  #      CodeUri: ../../dist/linux_amd64/cogclientset
+  #      Description: Cloudformation Custom Resource for configuring a Cognito User Pool Client.
+  #      Handler: cogclientset
+  #      MemorySize: 128
+  #      Role: !GetAtt CognitoClientSettingsRole.Arn
+  #      Runtime: go1.x
+  #      Timeout: 300
+  #  CognitoClientSettingsLogGroup:
+  #    Type: AWS::Logs::LogGroup
+  #    Properties:
+  #      LogGroupName:
+  #        Fn::Sub:
+  #          - "/aws/lambda/${LambdaName}"
+  #          - LambdaName: !Ref CognitoClientSettingsFunction
+  #      RetentionInDays: 90
+  #  CognitoClientSettingsPermission:
+  #    Type: AWS::Lambda::Permission
+  #    Properties:
+  #      Action: lambda:InvokeFunction
+  #      FunctionName: !GetAtt CognitoClientSettingsFunction.Arn
+  #      Principal: cloudformation.amazonaws.com
+  #  CognitoDomainRole:
+  #    Type: AWS::IAM::Role
+  #    Properties:
+  #      AssumeRolePolicyDocument:
+  #        Version: "2012-10-17"
+  #        Statement:
+  #          - Effect: "Allow"
+  #            Principal:
+  #              Service: lambda.amazonaws.com
+  #            Action:
+  #              - "sts:AssumeRole"
+  #      ManagedPolicyArns:
+  #        - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+  #      Policies:
+  #        - PolicyName: cog
+  #          PolicyDocument:
+  #            Version: '2012-10-17'
+  #            Statement:
+  #              - Effect: Allow
+  #                Action:
+  #                  - "cognito-idp:CreateUserPoolDomain"
+  #                  - "cognito-idp:DeleteUserPoolDomain"
+  #                  - "cloudfront:UpdateDistribution"
+  #                Resource:
+  #                  - "*"
+  #  CognitoDomainFunction:
+  #    Type: AWS::Serverless::Function
+  #    Properties:
+  #      AutoPublishAlias: live
+  #      CodeUri: ../../dist/linux_amd64/cogdomain
+  #      Description: Cloudformation Custom Resource for Cognito User Pool Domain
+  #      Handler: cogdomain
+  #      MemorySize: 128
+  #      Role: !GetAtt CognitoDomainRole.Arn
+  #      Runtime: go1.x
+  #      Timeout: 300
+  #  CognitoDomainLogGroup:
+  #    Type: AWS::Logs::LogGroup
+  #    Properties:
+  #      LogGroupName:
+  #        Fn::Sub:
+  #          - "/aws/lambda/${LambdaName}"
+  #          - LambdaName: !Ref CognitoDomainFunction
+  #      RetentionInDays: 90
+  #  CognitoDomainPermission:
+  #    Type: AWS::Lambda::Permission
+  #    Properties:
+  #      Action: lambda:InvokeFunction
+  #      FunctionName: !GetAtt CognitoDomainFunction.Arn
+  #      Principal: cloudformation.amazonaws.com
+  #  CognitoIdentityProviderRole:
+  #    Type: AWS::IAM::Role
+  #    Properties:
+  #      AssumeRolePolicyDocument:
+  #        Version: "2012-10-17"
+  #        Statement:
+  #          - Effect: "Allow"
+  #            Principal:
+  #              Service: lambda.amazonaws.com
+  #            Action:
+  #              - "sts:AssumeRole"
+  #      ManagedPolicyArns:
+  #        - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+  #      Policies:
+  #        - PolicyName: idp
+  #          PolicyDocument:
+  #            Version: '2012-10-17'
+  #            Statement:
+  #              - Effect: Allow
+  #                Action:
+  #                  - "cognito-idp:CreateIdentityProvider"
+  #                  - "cognito-idp:DeleteIdentityProvider"
+  #                  - "cognito-idp:UpdateIdentityProvider"
+  #                Resource:
+  #                  - "*"
+  #        - PolicyName: ssm
+  #          PolicyDocument:
+  #            Version: '2012-10-17'
+  #            Statement:
+  #              - Effect: Allow
+  #                Action:
+  #                  - ssm:GetParameter
+  #                Resource: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/hyperdrive/cogidp/*"
+  #        - PolicyName: kms
+  #          PolicyDocument:
+  #            Version: '2012-10-17'
+  #            Statement:
+  #              - Effect: Allow
+  #                Action:
+  #                  - kms:Decrypt
+  #                Resource:
+  #                  - !Sub "arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/${HyperdriveKmsKeyId}"
+  #  CognitoIdentityProviderFunction:
+  #    Type: AWS::Serverless::Function
+  #    Properties:
+  #      AutoPublishAlias: live
+  #      CodeUri: ../../dist/linux_amd64/cogidp
+  #      Description: Cloudformation Custom Resource for cognito user pool idendity provider
+  #      Handler: cogidp
+  #      MemorySize: 128
+  #      Role: !GetAtt CognitoIdentityProviderRole.Arn
+  #      Runtime: go1.x
+  #      Timeout: 300
+  #  CognitoIdentityProviderLogGroup:
+  #    Type: AWS::Logs::LogGroup
+  #    Properties:
+  #      LogGroupName:
+  #        Fn::Sub:
+  #          - "/aws/lambda/${LambdaName}"
+  #          - LambdaName: !Ref CognitoIdentityProviderFunction
+  #      RetentionInDays: 90
+  #  CognitoIdentityProviderPermission:
+  #    Type: AWS::Lambda::Permission
+  #    Properties:
+  #      Action: lambda:InvokeFunction
+  #      FunctionName: !GetAtt CognitoIdentityProviderFunction.Arn
+  #      Principal: cloudformation.amazonaws.com
+  DnsCertificateFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      AutoPublishAlias: live
+      CodeUri: ../../dist/linux_amd64/DnsCertificate
+      Description: Cloudformation Custom Resource for SSL Certificates validated via DNS.
+      Handler: dnsCertificate
+      MemorySize: 128
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - "acm:*"
+              Resource:
+                - "*"
+      Runtime: go1.x
+      Timeout: 300
+  DnsCertificatePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt DnsCertificateFunction.Arn
+      Principal: cloudformation.amazonaws.com
+  DnsCertificateRecordSetGroupFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      AutoPublishAlias: live
+      CodeUri: ../../dist/linux_amd64/DnsCertificateRecordSetGroup
+      Description: Cloudformation Custom Resource to insert route53 records for DNS validated certificates
+      Handler: dnsCertificateRecordSetGroup
+      MemorySize: 128
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Sid: acm
+              Effect: Allow
+              Action:
+                - "acm:DescribeCertificate"
+                - "acm:GetCertificate"
+                - "acm:ListCertificates"
+                - "acm:ListTagsForCertificate"
+              Resource:
+                - "*"
+            - Sid: route53
+              Effect: Allow
+              Action:
+                - "route53:GetHostedZone"
+                - "route53:ListHostedZones"
+                - "route53:ListHostedZonesByName"
+                - "route53:ChangeResourceRecordSets"
+                - "route53:GetChange"
+              Resource:
+                - "*"
+      Runtime: go1.x
+      Timeout: 300
+  DnsCertificateRecordSetGroupPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt DnsCertificateRecordSetGroupFunction.Arn
+      Principal: cloudformation.amazonaws.com
+  #  DummyRole:
+  #    Type: AWS::IAM::Role
+  #    Properties:
+  #      AssumeRolePolicyDocument:
+  #        Version: "2012-10-17"
+  #        Statement:
+  #          - Effect: "Allow"
+  #            Principal:
+  #              Service: lambda.amazonaws.com
+  #            Action:
+  #              - "sts:AssumeRole"
+  #      ManagedPolicyArns:
+  #        - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+  #  DummyFunction:
+  #    Type: AWS::Serverless::Function
+  #    Properties:
+  #      AutoPublishAlias: live
+  #      CodeUri: ../../dist/linux_amd64/dummy
+  #      Description: Dummy Resource for information only stacks
+  #      Handler: dummy
+  #      MemorySize: 128
+  #      Role: !GetAtt DummyRole.Arn
+  #      Runtime: go1.x
+  #      Timeout: 300
+  #  DummyLogGroup:
+  #    Type: AWS::Logs::LogGroup
+  #    Properties:
+  #      LogGroupName:
+  #        Fn::Sub:
+  #          - "/aws/lambda/${LambdaName}"
+  #          - LambdaName: !Ref DummyFunction
+  #      RetentionInDays: 90
+  #  DummyPermission:
+  #    Type: AWS::Lambda::Permission
+  #    Properties:
+  #      Action: lambda:InvokeFunction
+  #      FunctionName: !GetAtt DummyFunction.Arn
+  #      Principal: cloudformation.amazonaws.com
+  #  EcrCleanupRole:
+  #    Type: AWS::IAM::Role
+  #    Properties:
+  #      AssumeRolePolicyDocument:
+  #        Version: "2012-10-17"
+  #        Statement:
+  #          - Effect: "Allow"
+  #            Principal:
+  #              Service: lambda.amazonaws.com
+  #            Action:
+  #              - "sts:AssumeRole"
+  #      ManagedPolicyArns:
+  #        - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+  #      Policies:
+  #        - PolicyName: ecr
+  #          PolicyDocument:
+  #            Version: '2012-10-17'
+  #            Statement:
+  #              - Effect: Allow
+  #                Action:
+  #                  - "ecr:*"
+  #                  - "cloudformation:DescribeStacks"
+  #                Resource:
+  #                  - "*"
+  #  EcrCleanupFunction:
+  #    Type: AWS::Serverless::Function
+  #    Properties:
+  #      AutoPublishAlias: live
+  #      CodeUri: ../../dist/linux_amd64/ecrcleanup
+  #      Description: Cloudformation Custom Resource for ECR Cleaning
+  #      Handler: ecrcleanup
+  #      MemorySize: 128
+  #      Role: !GetAtt EcrCleanupRole.Arn
+  #      Runtime: go1.x
+  #      Timeout: 300
+  #  EcrCleanupLogGroup:
+  #    Type: AWS::Logs::LogGroup
+  #    Properties:
+  #      LogGroupName:
+  #        Fn::Sub:
+  #          - "/aws/lambda/${LambdaName}"
+  #          - LambdaName: !Ref EcrCleanupFunction
+  #      RetentionInDays: 90
+  #  EcrCleanupPermission:
+  #    Type: AWS::Lambda::Permission
+  #    Properties:
+  #      Action: lambda:InvokeFunction
+  #      FunctionName: !GetAtt EcrCleanupFunction.Arn
+  #      Principal: cloudformation.amazonaws.com
+  #  ListenerRuleSwapperRole:
+  #    Type: AWS::IAM::Role
+  #    Properties:
+  #      AssumeRolePolicyDocument:
+  #        Version: "2012-10-17"
+  #        Statement:
+  #          - Effect: "Allow"
+  #            Principal:
+  #              Service: lambda.amazonaws.com
+  #            Action:
+  #              - "sts:AssumeRole"
+  #      ManagedPolicyArns:
+  #        - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+  #      Policies:
+  #        - PolicyName: elasticloadbalancing
+  #          PolicyDocument:
+  #            Version: '2012-10-17'
+  #            Statement:
+  #              - Effect: Allow
+  #                Action:
+  #                  - "elasticloadbalancing:DescribeRules"
+  #                  - "elasticloadbalancing:ModifyRule"
+  #                Resource:
+  #                  - "*"
+  #  ListenerRuleSwapperFunction:
+  #    Type: AWS::Serverless::Function
+  #    Properties:
+  #      AutoPublishAlias: live
+  #      CodeUri: ../../dist/linux_amd64/listenerRuleSwapper
+  #      Description: Cloudformation Custom Resource for ECR Cleaning
+  #      Handler: ListenerRuleSwapper
+  #      MemorySize: 128
+  #      Role: !GetAtt ListenerRuleSwapperRole.Arn
+  #      Runtime: go1.x
+  #      Timeout: 300
+  #  ListenerRuleSwapperLogGroup:
+  #    Type: AWS::Logs::LogGroup
+  #    Properties:
+  #      LogGroupName:
+  #        Fn::Sub:
+  #          - "/aws/lambda/${LambdaName}"
+  #          - LambdaName: !Ref ListenerRuleSwapperFunction
+  #      RetentionInDays: 90
+  #  ListenerRuleSwapperPermission:
+  #    Type: AWS::Lambda::Permission
+  #    Properties:
+  #      Action: lambda:InvokeFunction
+  #      FunctionName: !GetAtt ListenerRuleSwapperFunction.Arn
+  #      Principal: cloudformation.amazonaws.com
+  #  LogGroupRole:
+  #    Type: AWS::IAM::Role
+  #    Properties:
+  #      AssumeRolePolicyDocument:
+  #        Version: "2012-10-17"
+  #        Statement:
+  #          - Effect: "Allow"
+  #            Principal:
+  #              Service: lambda.amazonaws.com
+  #            Action:
+  #              - "sts:AssumeRole"
+  #      ManagedPolicyArns:
+  #        - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+  #      Policies:
+  #        - PolicyName: cloudwatchlogs
+  #          PolicyDocument:
+  #            Version: '2012-10-17'
+  #            Statement:
+  #              - Effect: Allow
+  #                Action:
+  #                  - "logs:*"
+  #                Resource:
+  #                  - "*"
+  #  LogGroupFunction:
+  #    Type: AWS::Serverless::Function
+  #    Properties:
+  #      AutoPublishAlias: live
+  #      CodeUri: ../../dist/linux_amd64/loggrp
+  #      Description: Cloudformation Custom Resource for log groups with tags and other regions
+  #      Handler: loggrp
+  #      MemorySize: 128
+  #      Role: !GetAtt LogGroupRole.Arn
+  #      Runtime: go1.x
+  #      Timeout: 300
+  #  LogGroupLogGroup:
+  #    Type: AWS::Logs::LogGroup
+  #    Properties:
+  #      LogGroupName:
+  #        Fn::Sub:
+  #          - "/aws/lambda/${LambdaName}"
+  #          - LambdaName: !Ref LogGroupFunction
+  #      RetentionInDays: 90
+  #  LogGroupPermission:
+  #    Type: AWS::Lambda::Permission
+  #    Properties:
+  #      Action: lambda:InvokeFunction
+  #      FunctionName: !GetAtt LogGroupFunction.Arn
+  #      Principal: cloudformation.amazonaws.com
+  S3CleanupFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      AutoPublishAlias: live
+      CodeUri: ../../dist/linux_amd64/S3Cleanup
+      Description: Cloudformation Custom Resource for S3 Bucket Cleaning
+      Handler: s3Cleanup
+      MemorySize: 128
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - "s3:*"
+                - "cloudformation:DescribeStacks"
+              Resource:
+                - "*"
+      Runtime: go1.x
+      Timeout: 300
+  S3CleanupPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt S3CleanupFunction.Arn
+      Principal: cloudformation.amazonaws.com
+  SequenceFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      AutoPublishAlias: live
+      CodeUri: ../../dist/linux_amd64/Sequence
+      Description: Cloudformation Custom Resource for Sequences
+      Handler: sequence
+      MemorySize: 128
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Sid: ssm
+              Action:
+                - "ssm:DeleteParameter"
+                - "ssm:DescribeParameters"
+                - "ssm:GetParametersByPath"
+                - "ssm:GetParameter"
+                - "ssm:GetParameters"
+                - "ssm:PutParameter"
+              Resource:
+                - "arn:aws:ssm:*:*:parameter/forge/sequence/*"
+      Runtime: go1.x
+      Timeout: 300
+  SequencePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt SequenceFunction.Arn
+      Principal: cloudformation.amazonaws.com
+  SequenceValueFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      AutoPublishAlias: live
+      CodeUri: ../../dist/linux_amd64/SequenceValue
+      Description: Cloudformation Custom Resource for Sequence Values
+      Handler: sequenceValue
+      MemorySize: 128
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Sid: ssm
+              Action:
+                - "ssm:DescribeParameters"
+                - "ssm:GetParametersByPath"
+                - "ssm:GetParameter"
+                - "ssm:GetParameters"
+                - "ssm:PutParameter"
+              Resource:
+                - "arn:aws:ssm:*:*:parameter/forge/sequence/*"
+      Runtime: go1.x
+      Timeout: 300
+  SequenceValuePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt SequenceValueFunction.Arn
+      Principal: cloudformation.amazonaws.com
+#  RotateCfApiKeyRole:
+#    Type: AWS::IAM::Role
+#    Properties:
+#      AssumeRolePolicyDocument:
+#        Version: "2012-10-17"
+#        Statement:
+#          - Effect: "Allow"
+#            Principal:
+#              Service: lambda.amazonaws.com
+#            Action:
+#              - "sts:AssumeRole"
+#      ManagedPolicyArns:
+#        - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+#      Policies:
+#        - PolicyName: cloudformation
+#          PolicyDocument:
+#            Version: '2012-10-17'
+#            Statement:
+#              - Effect: Allow
+#                Action:
+#                  - "cloudformation:CreateChangeSet"
+#                  - "cloudformation:DeleteChangeSet"
+#                  - "cloudformation:DescribeChangeSet"
+#                  - "cloudformation:DescribeStacks"
+#                  - "cloudformation:ExecuteChangeSet"
+#                  - "cloudformation:UpdateStack"
+#                  - "events:DescribeRule"
+#                Resource:
+#                  - "*"
+#  RotateCfApiKeyFunction:
+#    Type: AWS::Serverless::Function
+#    Properties:
+#      AutoPublishAlias: live
+#      CodeUri: ../../dist/linux_amd64/rotatecfapikey
+#      Description: Cloudformation Custom Resource for apg api keys for Cloudfront.
+#      Handler: rotatecfapikey
+#      MemorySize: 128
+#      Role: !GetAtt RotateCfApiKeyRole.Arn
+#      Runtime: go1.x
+#      Timeout: 300
+#  RotateCfApiKeyLogGroup:
+#    Type: AWS::Logs::LogGroup
+#    Properties:
+#      LogGroupName:
+#        Fn::Sub:
+#          - "/aws/lambda/${LambdaName}"
+#          - LambdaName: !Ref RotateCfApiKeyFunction
+#      RetentionInDays: 90
+#  RotateCfApiKeyPermission:
+#    Type: AWS::Lambda::Permission
+#    Properties:
+#      Action: lambda:InvokeFunction
+#      FunctionName: !GetAtt RotateCfApiKeyFunction.Arn
+#      Principal: events.amazonaws.com
+#  # Code commit function
+#  PipelineTriggerRole:
+#    Type: AWS::IAM::Role
+#    Properties:
+#      AssumeRolePolicyDocument:
+#        Version: "2012-10-17"
+#        Statement:
+#          - Effect: "Allow"
+#            Principal:
+#              Service: lambda.amazonaws.com
+#            Action:
+#              - "sts:AssumeRole"
+#      ManagedPolicyArns:
+#        - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+#      Policies:
+#        - PolicyName: s3
+#          PolicyDocument:
+#            Version: '2012-10-17'
+#            Statement:
+#              - Effect: Allow
+#                Action:
+#                  - "s3:PutObject"
+#                  - "s3:GetObject"
+#                  - "s3:GetObjectVersion"
+#                Resource:
+#                  - Fn::Sub:
+#                      - "${Bucket}/*"
+#                      - Bucket: !ImportValue HyperdriveCore-EventsBucketArn
+#  PipelineTriggerFunction:
+#    Type: AWS::Serverless::Function
+#    Properties:
+#      AutoPublishAlias: live
+#      CodeUri: ../../dist/linux_amd64/pipelineTrigger
+#      Runtime: go1.x
+#      Handler: pipelineTrigger
+#      Role: !GetAtt PipelineTriggerRole.Arn
+#      Environment:
+#        Variables:
+#          EVENTS_BUCKET_NAME: !ImportValue HyperdriveCore-EventsBucketName
+#  PipelineTriggerLogs:
+#    Type: AWS::Logs::LogGroup
+#    Properties:
+#      LogGroupName:
+#        Fn::Sub:
+#          - "/aws/lambda/${LambdaName}"
+#          - LambdaName: !Ref PipelineTriggerFunction
+#      RetentionInDays: 90
+#  PipelineTriggerPermission:
+#    Type: AWS::Lambda::Permission
+#    Properties:
+#      Action: lambda:InvokeFunction
+#      FunctionName: !GetAtt PipelineTriggerFunction.Arn
+#      Principal: codecommit.amazonaws.com
+Outputs:
+  #  CogCondPreAuth:
+  #    Value: !GetAtt CogCondPreAuthFunction.Arn
+  #    Export:
+  #      Name: !Sub "${AWS::StackName}-CogCondPreAuth"
+  #  CogCondPreAuthAlias:
+  #    Value: !Ref CogCondPreAuthFunction.Alias
+  #    Export:
+  #      Name: !Sub "${AWS::StackName}-CogCondPreAuthAlias"
+  #  CogCondPreAuthVersion:
+  #    Value: !Ref CogCondPreAuthFunction.Version
+  #    Export:
+  #      Name: !Sub "${AWS::StackName}-CogCondPreAuthVersion"
+  #  CfApiKey:
+  #    Value: !GetAtt CfApiKeyFunction.Arn
+  #    Export:
+  #      Name: !Sub "${AWS::StackName}-CfApiKey"
+  #  CfApiKeyAlias:
+  #    Value: !Ref CfApiKeyFunction.Alias
+  #    Export:
+  #      Name: !Sub "${AWS::StackName}-CfApiKeyAlias"
+  #  CfApiKeyVersion:
+  #    Value: !Ref CfApiKeyFunction.Version
+  #    Export:
+  #      Name: !Sub "${AWS::StackName}-CfApiKeyVersion"
+  #  CogCondPreAuthSettings:
+  #    Value: !GetAtt CogCondPreAuthSettingsFunction.Arn
+  #    Export:
+  #      Name: !Sub "${AWS::StackName}-CogCondPreAuthSettings"
+  #  CogCondPreAuthSettingsAlias:
+  #    Value: !Ref CogCondPreAuthSettingsFunction.Alias
+  #    Export:
+  #      Name: !Sub "${AWS::StackName}-CogCondPreAuthSettingsAlias"
+  #  CogCondPreAuthSettingsVersion:
+  #    Value: !Ref CogCondPreAuthSettingsFunction.Version
+  #    Export:
+  #      Name: !Sub "${AWS::StackName}-CogCondPreAuthSettingsVersion"
+  #  CognitoClientSettings:
+  #    Value: !GetAtt CognitoClientSettingsFunction.Arn
+  #    Export:
+  #      Name: !Sub "${AWS::StackName}-CognitoClientSettings"
+  #  CognitoClientSettingsAlias:
+  #    Value: !Ref CognitoClientSettingsFunction.Alias
+  #    Export:
+  #      Name: !Sub "${AWS::StackName}-CognitoClientSettingsAlias"
+  #  CognitoClientSettingsVersion:
+  #    Value: !Ref CognitoClientSettingsFunction.Version
+  #    Export:
+  #      Name: !Sub "${AWS::StackName}-CognitoClientSettingsVersion"
+  #  CognitoDomain:
+  #    Value: !GetAtt CognitoDomainFunction.Arn
+  #    Export:
+  #      Name: !Sub "${AWS::StackName}-CognitoDomain"
+  #  CognitoDomainAlias:
+  #    Value: !Ref CognitoDomainFunction.Alias
+  #    Export:
+  #      Name: !Sub "${AWS::StackName}-CognitoDomainAlias"
+  #  CognitoDomainVersion:
+  #    Value: !Ref CognitoDomainFunction.Version
+  #    Export:
+  #      Name: !Sub "${AWS::StackName}-CognitoDomainVersion"
+  #  CognitoIdentityProvider:
+  #    Value: !GetAtt CognitoIdentityProviderFunction.Arn
+  #    Export:
+  #      Name: !Sub "${AWS::StackName}-CognitoIdentityProvider"
+  #  CognitoIdentityProviderAlias:
+  #    Value: !Ref CognitoIdentityProviderFunction.Alias
+  #    Export:
+  #      Name: !Sub "${AWS::StackName}-CognitoIdentityProviderAlias"
+  #  CognitoIdentityProviderVersion:
+  #    Value: !Ref CognitoIdentityProviderFunction.Version
+  #    Export:
+  #      Name: !Sub "${AWS::StackName}-CognitoIdentityProviderVersion"
+  DnsCertificate:
+    Value: !GetAtt DnsCertificateFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-DnsCertificate"
+  DnsCertificateRecordSetGroup:
+    Value: !GetAtt DnsCertificateRecordSetGroupFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-DnsCertificateRecordSetGroup"
+  #  Dummy:
+  #    Value: !GetAtt DummyFunction.Arn
+  #    Export:
+  #      Name: !Sub "${AWS::StackName}-Dummy"
+  #  DummyAlias:
+  #    Value: !Ref DummyFunction.Alias
+  #    Export:
+  #      Name: !Sub "${AWS::StackName}-DummyAlias"
+  #  DummyVersion:
+  #    Value: !Ref DummyFunction.Version
+  #    Export:
+  #      Name: !Sub "${AWS::StackName}-DummyVersion"
+  #  EcrCleanup:
+  #    Value: !GetAtt EcrCleanupFunction.Arn
+  #    Export:
+  #      Name: !Sub "${AWS::StackName}-EcrCleanup"
+  #  EcrCleanupAlias:
+  #    Value: !Ref EcrCleanupFunction.Alias
+  #    Export:
+  #      Name: !Sub "${AWS::StackName}-EcrCleanupAlias"
+  #  EcrCleanupVersion:
+  #    Value: !Ref EcrCleanupFunction.Version
+  #    Export:
+  #      Name: !Sub "${AWS::StackName}-EcrCleanupVersion"
+  #  ListenerRuleSwapper:
+  #    Value: !GetAtt ListenerRuleSwapperFunction.Arn
+  #    Export:
+  #      Name: !Sub "${AWS::StackName}-ListenerRuleSwapper"
+  #  ListenerRuleSwapperAlias:
+  #    Value: !Ref ListenerRuleSwapperFunction.Alias
+  #    Export:
+  #      Name: !Sub "${AWS::StackName}-ListenerRuleSwapperAlias"
+  #  ListenerRuleSwapperVersion:
+  #    Value: !Ref ListenerRuleSwapperFunction.Version
+  #    Export:
+  #      Name: !Sub "${AWS::StackName}-ListenerRuleSwapperVersion"
+  #  LogGroup:
+  #    Value: !GetAtt LogGroupFunction.Arn
+  #    Export:
+  #      Name: !Sub "${AWS::StackName}-LogGroup"
+  #  LogGroupAlias:
+  #    Value: !Ref LogGroupFunction.Alias
+  #    Export:
+  #      Name: !Sub "${AWS::StackName}-LogGroupAlias"
+  #  LogGroupVersion:
+  #    Value: !Ref LogGroupFunction.Version
+  #    Export:
+  #      Name: !Sub "${AWS::StackName}-LogGroupVersion"
+  S3Cleanup:
+    Value: !GetAtt S3CleanupFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-S3Cleanup"
+  Sequence:
+    Value: !GetAtt SequenceFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-Sequence"
+  SequenceValue:
+    Value: !GetAtt SequenceValueFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-SequenceValue"
+#  RotateCfApiKey:
+#    Value: !GetAtt RotateCfApiKeyFunction.Arn
+#    Export:
+#      Name: !Sub "${AWS::StackName}-RotateCfApiKey"
+#  RotateCfApiKeyAlias:
+#    Value: !Ref RotateCfApiKeyFunction.Alias
+#    Export:
+#      Name: !Sub "${AWS::StackName}-RotateCfApiKeyAlias"
+#  RotateCfApiKeyVersion:
+#    Value: !Ref RotateCfApiKeyFunction.Version
+#    Export:
+#      Name: !Sub "${AWS::StackName}-RotateCfApiKeyVersion"
+#  PipelineTrigger:
+#    Value: !GetAtt PipelineTriggerFunction.Arn
+#    Export:
+#      Name: !Sub "${AWS::StackName}-PipelineTrigger"
+#  PipelineTriggerAlias:
+#    Value: !Ref PipelineTriggerFunction.Alias
+#    Export:
+#      Name: !Sub "${AWS::StackName}-PipelineTriggerAlias"
+#  PipelineTriggerVersion:
+#    Value: !Ref PipelineTriggerFunction.Version
+#    Export:
+#      Name: !Sub "${AWS::StackName}-PipelineTriggerVersion"
+#  Version:
+#    Value: !Ref Version
+#    Export:
+#      Name: !Sub "${AWS::StackName}-Version"

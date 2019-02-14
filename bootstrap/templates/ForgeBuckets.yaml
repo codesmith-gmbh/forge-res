@@ -1,0 +1,138 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: The policies and roles for the codesmith forge
+Parameters:
+  ForgeDomainName:
+    Type: String
+Resources:
+  ArtifactsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${AWS::Region}.forge.artifacts.${ForgeDomainName}"
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      VersioningConfiguration:
+        Status: Enabled
+  CloudFrontOriginIdentity:
+    Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: "Forge Identity for Artifacts Bucket"
+  ArtifactsBucketPolicy:
+    Type: "AWS::S3::BucketPolicy"
+    Properties:
+      Bucket: !Ref ArtifactsBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Id: "cf-identity"
+        Statement:
+          - Sid: "cf-identity"
+            Effect: "Allow"
+            Principal:
+              CanonicalUser: !GetAtt CloudFrontOriginIdentity.S3CanonicalUserId
+            Action:
+              - "s3:GetObject"
+              - "s3:ListBucket"
+            Resource:
+              - !GetAtt ArtifactsBucket.Arn
+              - Fn::Sub:
+                  - "${Arn}/*"
+                  - Arn: !GetAtt ArtifactsBucket.Arn
+  CodePipelineBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${AWS::Region}.forge.codepipeline.${ForgeDomainName}"
+      LifecycleConfiguration:
+        Rules:
+          - ExpirationInDays: 180
+            Status: Enabled
+  EventsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${AWS::Region}.forge.events.${ForgeDomainName}"
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      VersioningConfiguration:
+        Status: Enabled
+      LifecycleConfiguration:
+        Rules:
+          - NoncurrentVersionExpirationInDays: 180
+            Status: Enabled
+  EventsBucketCloudTrail:
+    Type: AWS::CloudTrail::Trail
+    Properties:
+      EnableLogFileValidation: false
+      EventSelectors:
+        - DataResources:
+            - Type: AWS::S3::Object
+              Values:
+                - Fn::Sub:
+                    - "${Bucket}/"
+                    - Bucket: !GetAtt EventsBucket.Arn
+          IncludeManagementEvents: false
+          ReadWriteType: WriteOnly
+      IncludeGlobalServiceEvents: true
+      IsLogging: true
+      IsMultiRegionTrail: false
+      S3BucketName: !Sub "codepipeline-cloudtrail-placeholder-bucket-${AWS::Region}"
+      S3KeyPrefix: !Ref EventsBucket
+  CloudfrontLogsBucket:
+    Type: "AWS::S3::Bucket"
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      BucketName: !Sub "${AWS::Region}.forge.cloudfront-logs.${ForgeDomainName}"
+      LifecycleConfiguration:
+        Rules:
+          - ExpirationInDays: 90
+            Status: Enabled
+Outputs:
+  ArtifactsBucketName:
+    Value: !Ref ArtifactsBucket
+    Export:
+      Name: !Sub "${AWS::StackName}-ArtifactsBucketName"
+  ArtifactsBucketArn:
+    Value: !GetAtt ArtifactsBucket.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-ArtifactsBucketArn"
+  ArtifactsBucketDomain:
+    Value: !GetAtt ArtifactsBucket.DomainName
+    Export:
+      Name: !Sub "${AWS::StackName}-ArtifactsBucketDomain"
+  CloudFrontOriginIdentity:
+    Value: !Ref CloudFrontOriginIdentity
+    Export:
+      Name: !Sub "${AWS::StackName}-CloudFrontOriginIdentity"
+  CodePipelineBucketName:
+    Value: !Ref CodePipelineBucket
+    Export:
+      Name: !Sub "${AWS::StackName}-CodePipelineBucketName"
+  CodePipelineBucketArn:
+    Value: !GetAtt CodePipelineBucket.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-CodePipelineBucketArn"
+  EventsBucketName:
+    Value: !Ref EventsBucket
+    Export:
+      Name: !Sub "${AWS::StackName}-EventsBucketName"
+  EventsBucketArn:
+    Value: !GetAtt EventsBucket.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-EventsBucketArn"
+  CloudfrontLogsBucketName:
+    Value: !Ref CloudfrontLogsBucket
+    Export:
+      Name: !Sub "${AWS::StackName}-CloudfrontLogsBucketName"
+  CloudfrontLogsBucketArn:
+    Value: !GetAtt CloudfrontLogsBucket.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-CloudfrontLogsBucketArn"
+  CloudfrontLogsBucketDomain:
+    Value: !GetAtt CloudfrontLogsBucket.DomainName
+    Export:
+      Name: !Sub "${AWS::StackName}-CloudfrontLogsBucketDomain"

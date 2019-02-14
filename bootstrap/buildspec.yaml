@@ -1,6 +1,10 @@
 version: 0.2
 
 phases:
+  install:
+    commands:
+      - /usr/bin/wget -O /tmp/goreleaser_amd64.deb https://github.com/goreleaser/goreleaser/releases/download/v0.101.0/goreleaser_amd64.deb
+      - /usr/bin/dpkg -i /tmp/goreleaser_amd64.deb
   build:
     commands:
-      - "echo Bootstrap in region: ${AWS_REGION}"
+      - bash bootstrap/bootstrap.sh
