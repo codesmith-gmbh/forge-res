@@ -12,6 +12,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -36,14 +37,25 @@ type proc struct {
 }
 
 type Properties struct {
-	CertificateArn, HostedZoneName, HostedZoneId string
-	WithCaaRecords                               bool
+	CertificateArn, HostedZoneName, HostedZoneId, WithCaaRecords string
+
+	withCaaRecords bool `json:"-"`
 }
 
 func (p *proc) decodeProperties(input map[string]interface{}) (Properties, error) {
 	var properties Properties
 	if err := mapstructure.Decode(input, &properties); err != nil {
 		return properties, err
+	}
+	if properties.WithCaaRecords == "" {
+		log.Debugw("defaulting withCaaRecords to true")
+		properties.withCaaRecords = true
+	} else {
+		caa, err := strconv.ParseBool(properties.WithCaaRecords)
+		if err != nil {
+			return properties, errors.Wrapf(err, "WithCaaRecords must be a boolean: %v", properties)
+		}
+		properties.withCaaRecords = caa
 	}
 	if !common.IsCertificateArn(properties.CertificateArn) {
 		return properties, errors.Errorf("CertificateArn must be defined and be a ARN for a certificate: %v", properties)
@@ -102,13 +114,18 @@ func (p *proc) processEvent(_ context.Context, event cfn.Event) (string, map[str
 			return event.PhysicalResourceID, nil, err
 		}
 		if updatable(oldProperties, properties) {
-			var err error
-			if properties.WithCaaRecords {
-				err = p.createCaaRecords(properties)
+			if skippable(oldProperties, properties) {
+				log.Debugw("skipping update", "oldProperties", oldProperties, "newProperties", properties)
+				return event.PhysicalResourceID, nil, nil
 			} else {
-				err = p.deleteCaaRecords(properties)
+				var err error
+				if properties.withCaaRecords {
+					err = p.createCaaRecords(properties)
+				} else {
+					err = p.deleteCaaRecords(properties)
+				}
+				return event.PhysicalResourceID, nil, err
 			}
-			return event.PhysicalResourceID, nil, err
 		} else {
 			return p.createRecordSetGroup(properties)
 		}
@@ -154,6 +171,10 @@ func updatable(old Properties, new Properties) bool {
 		old.WithCaaRecords != new.WithCaaRecords
 }
 
+func skippable(old Properties, new Properties) bool {
+	return old.withCaaRecords && new.withCaaRecords
+}
+
 func (p *proc) createCaaRecords(properties Properties) error {
 	changes, err := p.generateChanges(properties, route53.ChangeActionCreate, caaSpec)
 	if err != nil {
@@ -183,7 +204,7 @@ var caaSpec = generationSpec{
 func validationSpec(properties Properties) generationSpec {
 	return generationSpec{
 		withDnsValidation: true,
-		withCaa:           properties.WithCaaRecords,
+		withCaa:           properties.withCaaRecords,
 	}
 }
 

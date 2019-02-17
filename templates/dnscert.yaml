@@ -12,5 +12,5 @@ Resources:
     Type: Custom::DnsCertificateRecordSetGroup
     Properties:
       ServiceToken: !ImportValue ForgeResources-DnsCertificateRecordSetGroup
-      CertificateArn: !GetAtt Certificate.Arn
+      CertificateArn: !Ref Certificate
       HostedZoneName: codesmith.ch.

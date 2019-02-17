@@ -75,7 +75,6 @@ OUTER:
 		options := cert.Certificate.DomainValidationOptions
 		if options != nil && len(options) == len(properties.SubjectAlternativeNames)+1 {
 			data := make(map[string]interface{}, 3*len(options))
-			data["Arn"] = *certificateArn
 			for _, option := range options {
 				if option.ResourceRecord == nil {
 					time.Sleep(3 * time.Second)
