@@ -4,14 +4,12 @@ import (
 	"context"
 	"github.com/aws/aws-lambda-go/cfn"
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/aws/external"
 	"github.com/aws/aws-sdk-go-v2/service/acm"
 	"github.com/aws/aws-sdk-go-v2/service/route53"
+	forgeacm "github.com/codesmith-gmbh/forge/aws/acm"
 	"github.com/codesmith-gmbh/forge/aws/common"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -27,13 +25,13 @@ func main() {
 	defer common.SyncSugaredLogger(log)
 	cfg := common.MustConfig()
 	r53 := route53.New(cfg)
-	p := &proc{r53: r53, acmService: acmService}
+	p := &proc{r53: r53, acmService: forgeacm.AcmService}
 	lambda.Start(cfn.LambdaWrap(p.processEvent))
 }
 
 type proc struct {
 	r53        *route53.Route53
-	acmService func(properties Properties) (*acm.ACM, error)
+	acmService func(certificateArn string) (*acm.ACM, error)
 }
 
 type Properties struct {
@@ -209,7 +207,7 @@ func validationSpec(properties Properties) generationSpec {
 }
 
 func (p *proc) generateChanges(properties Properties, changeAction route53.ChangeAction, spec generationSpec) ([]route53.Change, error) {
-	acms, err := p.acmService(properties)
+	acms, err := p.acmService(properties.CertificateArn)
 	if err != nil {
 		return nil, err
 	}
@@ -334,35 +332,4 @@ func (p *proc) waitForChange(changeInfo *route53.ChangeInfo) error {
 		changeStatus = res.ChangeInfo.Status
 	}
 	return errors.Errorf("change %s did not sync in time", changeId)
-}
-
-// ### SDK client
-//
-// We use the
-// [ACM sdk v2](https://github.com/aws/aws-sdk-go-v2/tree/master/service/acm)
-// to create the certificate. The client is created with the default
-// credential chain loader, if need be with the supplied region.
-func acmService(properties Properties) (*acm.ACM, error) {
-	var cfg aws.Config
-	region, err := certificateRegion(properties.CertificateArn)
-	if err != nil {
-		return nil, err
-	}
-
-	cfg, err = external.LoadDefaultAWSConfig(external.WithRegion(region))
-	if err != nil {
-		return nil, errors.Wrapf(err, "could not load config with region %s", region)
-	}
-
-	return acm.New(cfg), nil
-}
-
-var certificateRegionRegExp = regexp.MustCompile("^arn:aws.*:acm:(.+?):")
-
-func certificateRegion(arn string) (string, error) {
-	matches := certificateRegionRegExp.FindStringSubmatch(arn)
-	if len(matches) == 2 {
-		return matches[1], nil
-	}
-	return "", errors.Errorf("could not extract the region from the arn %s", arn)
 }

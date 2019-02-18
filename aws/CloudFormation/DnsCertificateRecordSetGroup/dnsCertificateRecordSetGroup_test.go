@@ -12,34 +12,6 @@ import (
 	"testing"
 )
 
-func TestCertificateRegion(t *testing.T) {
-	// 1. Correctness
-	for i, test := range []struct {
-		arn, region string
-	}{
-		{arn: "arn:aws:acm:eu-west-1:account:certificate/12345678-1234-1234-1234-123456789012", region: "eu-west-1"},
-		{arn: "arn:aws:acm:us-east-1:account:certificate/12345678-1234-1234-1234-123456789012", region: "us-east-1"},
-	} {
-		region, err := certificateRegion(test.arn)
-		if err != nil {
-			t.Errorf("error in correctness test case %d, %v, %s", i, test, err)
-		}
-		if region != test.region {
-			t.Errorf("correctness test case %d, expected: %s, got: %s, test case %v", i, test.region, region, test)
-		}
-	}
-
-	// 2. Completeness
-	for i, test := range []string{
-		"StackId-ResourceId-12345678",
-	} {
-		_, err := certificateRegion(test)
-		if err == nil {
-			t.Errorf("completeness test case %d, %s", i, test)
-		}
-	}
-}
-
 type testProc struct {
 	proc
 	cfg     aws.Config
@@ -50,7 +22,7 @@ func (p *testProc) mustProperties(t *testing.T) Properties {
 	properties := Properties{
 		CertificateArn: p.certArn,
 		HostedZoneName: "codesmith.ch.",
-		WithCaaRecords: true,
+		WithCaaRecords: "true",
 	}
 	err := p.fetchHostedZoneData(&properties)
 	if err != nil {
@@ -69,7 +41,7 @@ func TestIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err, "no certificate could be created")
 	}
-	acmService := func(properties Properties) (*acm.ACM, error) {
+	acmService := func(_ string) (*acm.ACM, error) {
 		return acm.New(cfg), nil
 	}
 	p := testProc{proc: proc{r53: route53.New(cfg), acmService: acmService}, cfg: cfg, certArn: certArn}
@@ -83,7 +55,7 @@ func TestIntegration(t *testing.T) {
 
 func (p *testProc) TestCreationChangeGenerationWithCaa(t *testing.T) {
 	properties := p.mustProperties(t)
-	properties.WithCaaRecords = true
+	properties.WithCaaRecords = "true"
 	changes, err := p.generateChanges(properties, route53.ChangeActionCreate, validationSpec(properties))
 	if err != nil {
 		t.Fatal(err, "no changes generated")
@@ -103,7 +75,7 @@ func (p *testProc) TestCreationChangeGenerationWithCaa(t *testing.T) {
 
 func (p *testProc) TestCreationChangeGenerationWithoutCaa(t *testing.T) {
 	properties := p.mustProperties(t)
-	properties.WithCaaRecords = false
+	properties.WithCaaRecords = "false"
 	changes, err := p.generateChanges(properties, route53.ChangeActionCreate, validationSpec(properties))
 	if err != nil {
 		t.Fatal(err, "no changes generated")
@@ -123,7 +95,7 @@ func (p *testProc) TestCreationChangeGenerationWithoutCaa(t *testing.T) {
 
 func (p *testProc) TestUpdateChangeGenerationCaa(t *testing.T) {
 	properties := p.mustProperties(t)
-	properties.WithCaaRecords = false
+	properties.WithCaaRecords = "false"
 	changes, err := p.generateChanges(properties, route53.ChangeActionCreate, caaSpec)
 	if err != nil {
 		t.Fatal(err, "no changes generated")
@@ -215,8 +187,7 @@ func (p *testProc) deleteOneCaaRecord(properties Properties) error {
 var domainName = "test-forge.codesmith.ch"
 
 func ensureTestCertificateArn(cm *acm.ACM) (string, error) {
-	certs, err := cm.ListCertificatesRequest(&acm.ListCertificatesInput{
-	}).Send()
+	certs, err := cm.ListCertificatesRequest(&acm.ListCertificatesInput{}).Send()
 	if err != nil {
 		return "", errors.Wrap(err, "could not load certificates")
 	}

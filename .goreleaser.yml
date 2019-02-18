@@ -10,8 +10,16 @@ builds:
     binary: DnsCertificate/dnsCertificate
     goos: [linux]
     goarch: [amd64]
+  - main: aws/CloudFormation/DnsCertificateCheck/dnsCertificateCheck.go
+    binary: DnsCertificateCheck/dnsCertificateCheck
+    goos: [linux]
+    goarch: [amd64]
   - main: aws/CloudFormation/DnsCertificateRecordSetGroup/dnsCertificateRecordSetGroup.go
     binary: DnsCertificateRecordSetGroup/dnsCertificateRecordSetGroup
+    goos: [linux]
+    goarch: [amd64]
+  - main: aws/CloudFormation/DnsCertificateWaitSNSTrigger/dnsCertificateWaitSNSTrigger.go
+    binary: DnsCertificateWaitSNSTrigger/dnsCertificateWaitSNSTrigger
     goos: [linux]
     goarch: [amd64]
   - main: aws/CloudFormation/S3Cleanup/s3Cleanup.go

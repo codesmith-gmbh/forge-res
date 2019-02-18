@@ -62,6 +62,8 @@ Resources:
                   - "cloudfront:GetCloudFrontOriginAccessIdentity"
                   - "cloudtrail:*"
                   - "lambda:*"
+                  - "sns:*"
+                  - "states:*"
                 Resource:
                   - "*"
               - Sid: cloudformation

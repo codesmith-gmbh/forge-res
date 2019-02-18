@@ -14,3 +14,8 @@ Resources:
       ServiceToken: !ImportValue ForgeResources-DnsCertificateRecordSetGroup
       CertificateArn: !Ref Certificate
       HostedZoneName: codesmith.ch.
+  CertificateWait:
+    Type: Custom::DnsCertificateWait
+    Properties:
+      ServiceToken: !ImportValue ForgeResources-DnsCertificateWait
+      CertificateArn: !Ref Certificate

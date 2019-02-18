@@ -5,6 +5,7 @@ require (
 	github.com/alecthomas/participle v0.2.0
 	github.com/aws/aws-lambda-go v1.8.2
 	github.com/aws/aws-sdk-go-v2 v0.7.0
+	github.com/google/uuid v1.1.0
 	github.com/mitchellh/mapstructure v1.1.2
 	github.com/pkg/errors v0.8.1
 	go.uber.org/atomic v1.3.2 // indirect

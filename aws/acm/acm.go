@@ -2,8 +2,11 @@ package acm
 
 import (
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/aws/external"
 	"github.com/aws/aws-sdk-go-v2/service/acm"
 	"github.com/pkg/errors"
+	"regexp"
 	"time"
 )
 
@@ -90,4 +93,37 @@ OUTER:
 		time.Sleep(3 * time.Second)
 	}
 	return nil, errors.Errorf("no DNS entries for certificate %s", *certificateArn)
+}
+
+// ACM Service according to Certificate ARN
+
+// ### SDK client
+//
+// We use the
+// [ACM sdk v2](https://github.com/aws/aws-sdk-go-v2/tree/master/service/acm)
+// to create the certificate. The client is created with the default
+// credential chain loader and with the region of the certificate
+func AcmService(certificateArn string) (*acm.ACM, error) {
+	var cfg aws.Config
+	region, err := certificateRegion(certificateArn)
+	if err != nil {
+		return nil, err
+	}
+
+	cfg, err = external.LoadDefaultAWSConfig(external.WithRegion(region))
+	if err != nil {
+		return nil, errors.Wrapf(err, "could not load config with region %s", region)
+	}
+
+	return acm.New(cfg), nil
+}
+
+var certificateRegionRegExp = regexp.MustCompile("^arn:aws.*:acm:(.+?):")
+
+func certificateRegion(arn string) (string, error) {
+	matches := certificateRegionRegExp.FindStringSubmatch(arn)
+	if len(matches) == 2 {
+		return matches[1], nil
+	}
+	return "", errors.Errorf("could not extract the region from the arn %s", arn)
 }

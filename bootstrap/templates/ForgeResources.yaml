@@ -400,44 +400,119 @@ Resources:
       Action: lambda:InvokeFunction
       FunctionName: !GetAtt DnsCertificateRecordSetGroupFunction.Arn
       Principal: cloudformation.amazonaws.com
-  #  DummyRole:
-  #    Type: AWS::IAM::Role
-  #    Properties:
-  #      AssumeRolePolicyDocument:
-  #        Version: "2012-10-17"
-  #        Statement:
-  #          - Effect: "Allow"
-  #            Principal:
-  #              Service: lambda.amazonaws.com
-  #            Action:
-  #              - "sts:AssumeRole"
-  #      ManagedPolicyArns:
-  #        - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-  #  DummyFunction:
-  #    Type: AWS::Serverless::Function
-  #    Properties:
-  #      AutoPublishAlias: live
-  #      CodeUri: ../../dist/linux_amd64/dummy
-  #      Description: Dummy Resource for information only stacks
-  #      Handler: dummy
-  #      MemorySize: 128
-  #      Role: !GetAtt DummyRole.Arn
-  #      Runtime: go1.x
-  #      Timeout: 300
-  #  DummyLogGroup:
-  #    Type: AWS::Logs::LogGroup
-  #    Properties:
-  #      LogGroupName:
-  #        Fn::Sub:
-  #          - "/aws/lambda/${LambdaName}"
-  #          - LambdaName: !Ref DummyFunction
-  #      RetentionInDays: 90
-  #  DummyPermission:
-  #    Type: AWS::Lambda::Permission
-  #    Properties:
-  #      Action: lambda:InvokeFunction
-  #      FunctionName: !GetAtt DummyFunction.Arn
-  #      Principal: cloudformation.amazonaws.com
+  DnsCertificateWaitSNSTopic:
+    Type: AWS::SNS::Topic
+  DnsCertificateWaitSNSTriggerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      AutoPublishAlias: live
+      CodeUri: ../../dist/linux_amd64/DnsCertificateWaitSNSTrigger
+      Description: Resource to trigger the step function waiting on a certificate to be issued (to avoid using wait conditions).
+      Environment:
+        Variables:
+          STATE_MACHINE_ARN: !Ref DnsCertificateWaitStateMachine
+      Events:
+        Trigger:
+          Type: SNS
+          Properties:
+            Topic: !Ref DnsCertificateWaitSNSTopic
+      Handler: dnsCertificateWaitSNSTrigger
+      MemorySize: 128
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Sid: step
+              Effect: Allow
+              Action:
+                - "states:startExecution"
+              Resource:
+                - !Ref DnsCertificateWaitStateMachine
+      Runtime: go1.x
+      Timeout: 300
+  DnsCertificateCheckFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      AutoPublishAlias: live
+      CodeUri: ../../dist/linux_amd64/DnsCertificateCheck
+      Description: Function to check a certificate inside a step functions state machine
+      Handler: dnsCertificateCheck
+      MemorySize: 128
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Sid: acm
+              Effect: Allow
+              Action:
+                - "acm:DescribeCertificate"
+                - "acm:GetCertificate"
+                - "acm:ListCertificates"
+                - "acm:ListTagsForCertificate"
+              Resource:
+                - "*"
+      Runtime: go1.x
+      Timeout: 300
+  DnsCertificateWaitStateMachineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - !Sub states.${AWS::Region}.amazonaws.com
+            Action: "sts:AssumeRole"
+      Policies:
+        - PolicyName: lambda
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "lambda:InvokeFunction"
+                Resource:
+                  - !GetAtt DnsCertificateCheckFunction.Arn
+  DnsCertificateWaitStateMachine:
+    Type: AWS::StepFunctions::StateMachine
+    Properties:
+      DefinitionString:
+        Fn::Sub:
+          - |
+            {
+              "StartAt": "Check",
+              "States": {
+                "Check": {
+                  "Type": "Task",
+                  "Resource": "${CheckArn}",
+                  "Next": "Switch"
+                },
+                "Switch": {
+                  "Type": "Choice",
+                  "Choices": [
+                    {
+                      "Variable": "$.IsCertificateIssued",
+                      "BooleanEquals": true,
+                      "Next": "Finish"
+                    },
+                    {
+                      "Variable": "$.IsCertificateIssued",
+                      "BooleanEquals": false,
+                      "Next": "Wait"
+                    }
+                  ]
+                },
+                "Wait": {
+                  "Type": "Wait",
+                  "Seconds": 60,
+                  "Next": "Check"
+                },
+                "Finish": {
+                  "Type": "Succeed"
+                }
+              }
+            }
+          - CheckArn: !GetAtt DnsCertificateCheckFunction.Arn
+      RoleArn: !GetAtt DnsCertificateWaitStateMachineRole.Arn
   #  EcrCleanupRole:
   #    Type: AWS::IAM::Role
   #    Properties:
@@ -856,6 +931,10 @@ Outputs:
     Value: !GetAtt DnsCertificateRecordSetGroupFunction.Arn
     Export:
       Name: !Sub "${AWS::StackName}-DnsCertificateRecordSetGroup"
+  DnsCertificateWait:
+    Value: !Ref DnsCertificateWaitSNSTopic
+    Export:
+      Name: !Sub "${AWS::StackName}-DnsCertificateWait"
   #  Dummy:
   #    Value: !GetAtt DummyFunction.Arn
   #    Export:
