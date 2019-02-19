@@ -338,37 +338,23 @@ Resources:
   #      Action: lambda:InvokeFunction
   #      FunctionName: !GetAtt CognitoIdentityProviderFunction.Arn
   #      Principal: cloudformation.amazonaws.com
+  DnsCertificateSNSTopic:
+    Type: AWS::SNS::Topic
   DnsCertificateFunction:
     Type: AWS::Serverless::Function
     Properties:
       AutoPublishAlias: live
       CodeUri: ../../dist/linux_amd64/DnsCertificate
       Description: Cloudformation Custom Resource for SSL Certificates validated via DNS.
+      Environment:
+        Variables:
+          STATE_MACHINE_ARN: !Ref DnsCertificateWaitStateMachine
+      Events:
+        Trigger:
+          Type: SNS
+          Properties:
+            Topic: !Ref DnsCertificateSNSTopic
       Handler: dnsCertificate
-      MemorySize: 128
-      Policies:
-        - Version: '2012-10-17'
-          Statement:
-            - Effect: Allow
-              Action:
-                - "acm:*"
-              Resource:
-                - "*"
-      Runtime: go1.x
-      Timeout: 300
-  DnsCertificatePermission:
-    Type: AWS::Lambda::Permission
-    Properties:
-      Action: lambda:InvokeFunction
-      FunctionName: !GetAtt DnsCertificateFunction.Arn
-      Principal: cloudformation.amazonaws.com
-  DnsCertificateRecordSetGroupFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      AutoPublishAlias: live
-      CodeUri: ../../dist/linux_amd64/DnsCertificateRecordSetGroup
-      Description: Cloudformation Custom Resource to insert route53 records for DNS validated certificates
-      Handler: dnsCertificateRecordSetGroup
       MemorySize: 128
       Policies:
         - Version: '2012-10-17'
@@ -376,10 +362,7 @@ Resources:
             - Sid: acm
               Effect: Allow
               Action:
-                - "acm:DescribeCertificate"
-                - "acm:GetCertificate"
-                - "acm:ListCertificates"
-                - "acm:ListTagsForCertificate"
+                - "acm:*"
               Resource:
                 - "*"
             - Sid: route53
@@ -392,41 +375,18 @@ Resources:
                 - "route53:GetChange"
               Resource:
                 - "*"
-      Runtime: go1.x
-      Timeout: 300
-  DnsCertificateRecordSetGroupPermission:
-    Type: AWS::Lambda::Permission
-    Properties:
-      Action: lambda:InvokeFunction
-      FunctionName: !GetAtt DnsCertificateRecordSetGroupFunction.Arn
-      Principal: cloudformation.amazonaws.com
-  DnsCertificateWaitSNSTopic:
-    Type: AWS::SNS::Topic
-  DnsCertificateWaitSNSTriggerFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      AutoPublishAlias: live
-      CodeUri: ../../dist/linux_amd64/DnsCertificateWaitSNSTrigger
-      Description: Resource to trigger the step function waiting on a certificate to be issued (to avoid using wait conditions).
-      Environment:
-        Variables:
-          STATE_MACHINE_ARN: !Ref DnsCertificateWaitStateMachine
-      Events:
-        Trigger:
-          Type: SNS
-          Properties:
-            Topic: !Ref DnsCertificateWaitSNSTopic
-      Handler: dnsCertificateWaitSNSTrigger
-      MemorySize: 128
-      Policies:
-        - Version: '2012-10-17'
-          Statement:
-            - Sid: step
+            - Sid: states
               Effect: Allow
               Action:
                 - "states:startExecution"
               Resource:
                 - !Ref DnsCertificateWaitStateMachine
+            - Sid: cloudformation
+              Effect: Allow
+              Action:
+                - "cloudformation:DescribeStackResource"
+              Resource:
+                - "*"
       Runtime: go1.x
       Timeout: 300
   DnsCertificateCheckFunction:
@@ -924,17 +884,9 @@ Outputs:
   #    Export:
   #      Name: !Sub "${AWS::StackName}-CognitoIdentityProviderVersion"
   DnsCertificate:
-    Value: !GetAtt DnsCertificateFunction.Arn
+    Value: !Ref DnsCertificateSNSTopic
     Export:
       Name: !Sub "${AWS::StackName}-DnsCertificate"
-  DnsCertificateRecordSetGroup:
-    Value: !GetAtt DnsCertificateRecordSetGroupFunction.Arn
-    Export:
-      Name: !Sub "${AWS::StackName}-DnsCertificateRecordSetGroup"
-  DnsCertificateWait:
-    Value: !Ref DnsCertificateWaitSNSTopic
-    Export:
-      Name: !Sub "${AWS::StackName}-DnsCertificateWait"
   #  Dummy:
   #    Value: !GetAtt DummyFunction.Arn
   #    Export:

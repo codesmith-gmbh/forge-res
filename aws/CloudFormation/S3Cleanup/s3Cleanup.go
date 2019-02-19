@@ -2,10 +2,10 @@ package main
 
 import (
 	"context"
+	"github.com/codesmith-gmbh/forge/aws/common"
 
 	"github.com/aws/aws-lambda-go/cfn"
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/aws/aws-sdk-go-v2/aws/external"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
 	awss3 "github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/mitchellh/mapstructure"
@@ -18,10 +18,7 @@ type proc struct {
 }
 
 func main() {
-	cfg, err := external.LoadDefaultAWSConfig()
-	if err != nil {
-		panic(err)
-	}
+	cfg := common.MustConfig()
 	p := &proc{s3: awss3.New(cfg), cf: cloudformation.New(cfg)}
 	lambda.Start(cfn.LambdaWrap(p.processEvent))
 }
@@ -77,7 +74,7 @@ func (p *proc) processEvent(ctx context.Context, event cfn.Event) (string, map[s
 	case cfn.RequestUpdate:
 		return physicalResourceID(event, properties), nil, nil
 	default:
-		return event.LogicalResourceID, nil, errors.Errorf("unknown request type %s", event.RequestType)
+		return common.UnknownRequestType(event)
 	}
 }
 

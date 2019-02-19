@@ -5,17 +5,7 @@ Resources:
     Type: Custom::DnsCertificate
     Properties:
       ServiceToken: !ImportValue ForgeResources-DnsCertificate
+      HostedZoneName: codesmith.ch.
       DomainName: test-forge.codesmith.ch
       SubjectAlternativeNames:
         - test-forge-san.codesmith.ch
-  DnsRecords:
-    Type: Custom::DnsCertificateRecordSetGroup
-    Properties:
-      ServiceToken: !ImportValue ForgeResources-DnsCertificateRecordSetGroup
-      CertificateArn: !Ref Certificate
-      HostedZoneName: codesmith.ch.
-  CertificateWait:
-    Type: Custom::DnsCertificateWait
-    Properties:
-      ServiceToken: !ImportValue ForgeResources-DnsCertificateWait
-      CertificateArn: !Ref Certificate

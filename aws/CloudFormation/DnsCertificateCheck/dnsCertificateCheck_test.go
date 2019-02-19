@@ -1,4 +1,4 @@
-package acm
+package main
 
 import "testing"
 
