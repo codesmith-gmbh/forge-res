@@ -539,38 +539,38 @@ Resources:
   #        - PolicyName: elasticloadbalancing
   #          PolicyDocument:
   #            Version: '2012-10-17'
-  #            Statement:
-  #              - Effect: Allow
-  #                Action:
-  #                  - "elasticloadbalancing:DescribeRules"
-  #                  - "elasticloadbalancing:ModifyRule"
-  #                Resource:
-  #                  - "*"
-  #  ListenerRuleSwapperFunction:
-  #    Type: AWS::Serverless::Function
-  #    Properties:
-  #      AutoPublishAlias: live
-  #      CodeUri: ../../dist/linux_amd64/listenerRuleSwapper
-  #      Description: Cloudformation Custom Resource for ECR Cleaning
-  #      Handler: ListenerRuleSwapper
-  #      MemorySize: 128
-  #      Role: !GetAtt ListenerRuleSwapperRole.Arn
-  #      Runtime: go1.x
-  #      Timeout: 300
-  #  ListenerRuleSwapperLogGroup:
-  #    Type: AWS::Logs::LogGroup
-  #    Properties:
-  #      LogGroupName:
-  #        Fn::Sub:
-  #          - "/aws/lambda/${LambdaName}"
-  #          - LambdaName: !Ref ListenerRuleSwapperFunction
-  #      RetentionInDays: 90
-  #  ListenerRuleSwapperPermission:
-  #    Type: AWS::Lambda::Permission
-  #    Properties:
-  #      Action: lambda:InvokeFunction
-  #      FunctionName: !GetAtt ListenerRuleSwapperFunction.Arn
-  #      Principal: cloudformation.amazonaws.com
+  ListenerRuleSwapperFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      AutoPublishAlias: live
+      CodeUri: ../../dist/linux_amd64/ListenerRuleSwapper
+      Description: Cloudformation Custom Resource to swap 2 rules during the update of a stack.
+      Handler: listenerRuleSwapper
+      MemorySize: 128
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Sid: elb
+              Effect: Allow
+              Action:
+                - "elasticloadbalancing:DescribeRules"
+                - "elasticloadbalancing:ModifyRule"
+              Resource:
+                - "*"
+            - Sid: cloudformation
+              Effect: Allow
+              Action:
+                - "cloudformation:DescribeStackResource"
+              Resource:
+                - "*"
+      Runtime: go1.x
+      Timeout: 300
+  ListenerRuleSwapperPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt ListenerRuleSwapperFunction.Arn
+      Principal: cloudformation.amazonaws.com
   #  LogGroupRole:
   #    Type: AWS::IAM::Role
   #    Properties:
@@ -911,18 +911,10 @@ Outputs:
   #    Value: !Ref EcrCleanupFunction.Version
   #    Export:
   #      Name: !Sub "${AWS::StackName}-EcrCleanupVersion"
-  #  ListenerRuleSwapper:
-  #    Value: !GetAtt ListenerRuleSwapperFunction.Arn
-  #    Export:
-  #      Name: !Sub "${AWS::StackName}-ListenerRuleSwapper"
-  #  ListenerRuleSwapperAlias:
-  #    Value: !Ref ListenerRuleSwapperFunction.Alias
-  #    Export:
-  #      Name: !Sub "${AWS::StackName}-ListenerRuleSwapperAlias"
-  #  ListenerRuleSwapperVersion:
-  #    Value: !Ref ListenerRuleSwapperFunction.Version
-  #    Export:
-  #      Name: !Sub "${AWS::StackName}-ListenerRuleSwapperVersion"
+  ListenerRuleSwapper:
+    Value: !GetAtt ListenerRuleSwapperFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-ListenerRuleSwapper"
   #  LogGroup:
   #    Value: !GetAtt LogGroupFunction.Arn
   #    Export:

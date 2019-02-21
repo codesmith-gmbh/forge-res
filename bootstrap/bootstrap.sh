@@ -108,7 +108,8 @@ function main () {
 }
 
 function dev () {
-    deployForgeLogsMaintenance "us-east-1"
+    goArtefacts
+    deployForgeResources "us-east-1"
 }
 
 case $1 in

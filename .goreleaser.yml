@@ -14,6 +14,10 @@ builds:
     binary: DnsCertificateCheck/dnsCertificateCheck
     goos: [linux]
     goarch: [amd64]
+  - main: aws/CloudFormation/ListenerRuleSwapper/listenerRuleSwapper.go
+    binary: ListenerRuleSwapper/listenerRuleSwapper
+    goos: [linux]
+    goarch: [amd64]
   - main: aws/CloudFormation/S3Cleanup/s3Cleanup.go
     binary: S3Cleanup/s3Cleanup
     goos: [linux]
