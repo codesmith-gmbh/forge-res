@@ -81,44 +81,38 @@ Resources:
   #      Policies:
   #        - PolicyName: apikey
   #          PolicyDocument:
-  #            Version: '2012-10-17'
-  #            Statement:
-  #              - Effect: Allow
-  #                Action:
-  #                  - "apigateway:*"
-  #                Resource:
-  #                  - !Sub "arn:aws:apigateway:${AWS::Region}::/apikeys"
-  #                  - !Sub "arn:aws:apigateway:${AWS::Region}::/apikeys/*"
-  #              - Effect: Allow
-  #                Action:
-  #                  - "cloudformation:DescribeStacks"
-  #                Resource:
-  #                  - "*"
-  #  CfApiKeyFunction:
-  #    Type: AWS::Serverless::Function
-  #    Properties:
-  #      AutoPublishAlias: live
-  #      CodeUri: ../../dist/linux_amd64/cfapikey
-  #      Description: Cloudformation Custom Resource for apg api keys for Cloudfront.
-  #      Handler: cfapikey
-  #      MemorySize: 128
-  #      Role: !GetAtt CfApiKeyRole.Arn
-  #      Runtime: go1.x
-  #      Timeout: 300
-  #  CfApiKeyLogGroup:
-  #    Type: AWS::Logs::LogGroup
-  #    Properties:
-  #      LogGroupName:
-  #        Fn::Sub:
-  #          - "/aws/lambda/${LambdaName}"
-  #          - LambdaName: !Ref CfApiKeyFunction
-  #      RetentionInDays: 90
-  #  CfApiKeyPermission:
-  #    Type: AWS::Lambda::Permission
-  #    Properties:
-  #      Action: lambda:InvokeFunction
-  #      FunctionName: !GetAtt CfApiKeyFunction.Arn
-  #      Principal: cloudformation.amazonaws.com
+  ApiKeyFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      AutoPublishAlias: live
+      CodeUri: ../../dist/linux_amd64/ApiKey
+      Description: Cloudformation Custom Resource for apg api keys for Cloudfront.
+      Handler: apiKey
+      MemorySize: 128
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Sid: apikey
+              Action:
+                - "apigateway:*"
+              Resource:
+                - !Sub "arn:aws:apigateway:${AWS::Region}::/apikeys"
+                - !Sub "arn:aws:apigateway:${AWS::Region}::/apikeys/*"
+            - Effect: Allow
+              Sid: cloudformation
+              Action:
+                - "cloudformation:DescribeStacks"
+              Resource:
+                - "*"
+      Runtime: go1.x
+      Timeout: 300
+  ApiKeyPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt ApiKeyFunction.Arn
+      Principal: cloudformation.amazonaws.com
   #  CogCondPreAuthSettingsRole:
   #    Type: AWS::IAM::Role
   #    Properties:
@@ -823,18 +817,10 @@ Outputs:
   #    Value: !Ref CogCondPreAuthFunction.Version
   #    Export:
   #      Name: !Sub "${AWS::StackName}-CogCondPreAuthVersion"
-  #  CfApiKey:
-  #    Value: !GetAtt CfApiKeyFunction.Arn
-  #    Export:
-  #      Name: !Sub "${AWS::StackName}-CfApiKey"
-  #  CfApiKeyAlias:
-  #    Value: !Ref CfApiKeyFunction.Alias
-  #    Export:
-  #      Name: !Sub "${AWS::StackName}-CfApiKeyAlias"
-  #  CfApiKeyVersion:
-  #    Value: !Ref CfApiKeyFunction.Version
-  #    Export:
-  #      Name: !Sub "${AWS::StackName}-CfApiKeyVersion"
+  CfApiKey:
+    Value: !GetAtt ApiKeyFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-ApiKey"
   #  CogCondPreAuthSettings:
   #    Value: !GetAtt CogCondPreAuthSettingsFunction.Arn
   #    Export:

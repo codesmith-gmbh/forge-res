@@ -11,11 +11,9 @@
 //
 // ```yaml
 // MyCfApiKey:
-//   Type: Custom::CfApiKey
+//   Type: Custom::ApiKey
 //   Properties:
-//     ServiceToken:
-//       Fn::ImportValue:
-//         !Sub ${HyperdriveCore}-CfApiKey
+//     ServiceToken: !Import ForgeResources-ApiKey
 //     Ordinal: <number>
 // ```
 //
@@ -36,31 +34,34 @@ package main
 
 import (
 	"context"
-	"github.com/DEEP-IMPACT-AG/hyperdrive/common"
 	"github.com/aws/aws-lambda-go/cfn"
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/aws/aws-sdk-go-v2/aws/external"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/aws/awserr"
 	"github.com/aws/aws-sdk-go-v2/service/apigateway"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
+	"github.com/codesmith-gmbh/forge/aws/common"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 	"strconv"
 )
 
-var cf *cloudformation.CloudFormation
-var apg *apigateway.APIGateway
-
 // The lambda is started using the AWS lambda go sdk. The handler function
 // does the actual work of creating the apikey. Cloudformation sends an
 // event to signify that a resources must be created, updated or deleted.
 func main() {
-	cfg, err := external.LoadDefaultAWSConfig()
-	if err != nil {
-		panic(err)
-	}
-	apg = apigateway.New(cfg)
-	cf = cloudformation.New(cfg)
-	lambda.Start(cfn.LambdaWrap(processEvent))
+	cfg := common.MustConfig()
+	p := newProc(cfg)
+	lambda.Start(cfn.LambdaWrap(p.processEvent))
+}
+
+type proc struct {
+	apg *apigateway.APIGateway
+	cf  *cloudformation.CloudFormation
+}
+
+func newProc(cfg aws.Config) *proc {
+	return &proc{apg: apigateway.New(cfg), cf: cloudformation.New(cfg)}
 }
 
 type ApiKeyProperties struct {
@@ -82,43 +83,33 @@ func apiKeyProperties(input map[string]interface{}) (ApiKeyProperties, error) {
 }
 
 // It is not possible to update the resource, if the ordinal changes, a new resource is allocated.
-func processEvent(ctx context.Context, event cfn.Event) (string, map[string]interface{}, error) {
+func (p *proc) processEvent(ctx context.Context, event cfn.Event) (string, map[string]interface{}, error) {
 	properties, err := apiKeyProperties(event.ResourceProperties)
 	if err != nil {
 		return "", nil, err
 	}
 	switch event.RequestType {
 	case cfn.RequestDelete:
-		if !common.IsFailurePhysicalResourceId(event.PhysicalResourceID) {
-			_, err := apg.DeleteApiKeyRequest(&apigateway.DeleteApiKeyInput{
-				ApiKey: &event.PhysicalResourceID,
-			}).Send()
-			if err != nil {
-				return event.PhysicalResourceID, nil, errors.Wrapf(err, "could not delete the api key %s", event.PhysicalResourceID)
-			}
-		}
-		return event.PhysicalResourceID, nil, nil
-	case cfn.RequestUpdate:
-		return createApiKey(event.StackID, properties)
-	case cfn.RequestCreate:
-		return createApiKey(event.StackID, properties)
+		return p.deleteApiKey(event.PhysicalResourceID)
+	case cfn.RequestUpdate, cfn.RequestCreate:
+		return p.createApiKey(event, properties)
 	default:
 		return event.PhysicalResourceID, nil, errors.Errorf("unknown request type %s", event.RequestType)
 	}
 }
 
-// To create the Api Key, we first retrieve the name of the stack and concatenate with the Ordinal to create
+// To create the Api Key, we first retrieve the name of the stack and concatenate with the LogicalResourceId and Ordinal to create
 // The Api Key Name.
-func createApiKey(stackId string, properties ApiKeyProperties) (string, map[string]interface{}, error) {
-	stack, err := cf.DescribeStacksRequest(&cloudformation.DescribeStacksInput{
-		StackName: &stackId,
+func (p *proc) createApiKey(event cfn.Event, properties ApiKeyProperties) (string, map[string]interface{}, error) {
+	stack, err := p.cf.DescribeStacksRequest(&cloudformation.DescribeStacksInput{
+		StackName: &event.StackID,
 	}).Send()
 	if err != nil {
-		return "", nil, errors.Wrapf(err, "Cannot retrieve the stack name for %s", stackId)
+		return "", nil, errors.Wrapf(err, "Cannot retrieve the stack name for %s", event.StackID)
 	}
-	name := *stack.Stacks[0].StackName + "-" + properties.Ordinal
+	name := *stack.Stacks[0].StackName + "-" + event.LogicalResourceID + "-" + properties.Ordinal
 	enabled := true
-	key, err := apg.CreateApiKeyRequest(&apigateway.CreateApiKeyInput{
+	key, err := p.apg.CreateApiKeyRequest(&apigateway.CreateApiKeyInput{
 		Name:    &name,
 		Enabled: &enabled,
 	}).Send()
@@ -126,4 +117,17 @@ func createApiKey(stackId string, properties ApiKeyProperties) (string, map[stri
 		return "", nil, errors.Wrapf(err, "Cannot create the key with name %s", name)
 	}
 	return *key.Id, map[string]interface{}{"Secret": key.Value}, nil
+}
+
+func (p *proc) deleteApiKey(keyId string) (string, map[string]interface{}, error) {
+	_, err := p.apg.DeleteApiKeyRequest(&apigateway.DeleteApiKeyInput{
+		ApiKey: &keyId,
+	}).Send()
+	if err != nil {
+		awsErr, ok := err.(awserr.RequestFailure)
+		if !ok || awsErr.StatusCode() != 404 {
+			return keyId, nil, errors.Wrapf(err, "could not delete the api key %s", keyId)
+		}
+	}
+	return keyId, nil, nil
 }

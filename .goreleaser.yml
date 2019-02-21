@@ -6,6 +6,10 @@ before:
     - go mod download
 
 builds:
+  - main: aws/CloudFormation/ApiKey/apiKey.go
+    binary: ApiKey/apiKey
+    goos: [linux]
+    goarch: [amd64]
   - main: aws/CloudFormation/DnsCertificate/dnsCertificate.go
     binary: DnsCertificate/dnsCertificate
     goos: [linux]
