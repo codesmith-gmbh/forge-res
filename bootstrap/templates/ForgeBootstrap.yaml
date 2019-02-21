@@ -59,7 +59,9 @@ Resources:
                 Effect: Allow
                 Action:
                   - "cloudfront:CreateCloudFrontOriginAccessIdentity"
+                  - "cloudfront:DeleteCloudFrontOriginAccessIdentity"
                   - "cloudfront:GetCloudFrontOriginAccessIdentity"
+                  - "cloudfront:GetCloudFrontOriginAccessIdentityConfig"
                   - "cloudtrail:*"
                   - "lambda:*"
                   - "sns:*"
@@ -176,9 +178,6 @@ Resources:
           - Name: GO111MODULE
             Value: "on"
             Type: PLAINTEXT
-          - Name: FORGE_DOMAIN_NAME
-            Value: !Ref ForgeDomainName
-            Type: PLAINTEXT
         Image: "aws/codebuild/golang:1.11"
         Type: LINUX_CONTAINER
       Name: ForgeBootstrap
@@ -195,3 +194,7 @@ Outputs:
     Value: !GetAtt BootstrapCloudFormationRole.Arn
     Export:
       Name: !Sub ${AWS::StackName}-BootstrapCloudFormationRoleArn
+  ForgeDomainName:
+    Value: !Ref ForgeDomainName
+    Export:
+      Name: !Sub ${AWS::StackName}-ForgeDomainName

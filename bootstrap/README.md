@@ -6,21 +6,21 @@ It is normally installed using the `forge` cli tool (alternatively, until the `f
 available). The following snippet is used for testing.
 
 ```
-aws cloudformation deploy \
+aws --region us-east-1 cloudformation deploy \
     --stack-name ForgeBootstrap \
     --template-file templates/ForgeBootstrap.yaml \
     --capabilities CAPABILITY_NAMED_IAM \
     --parameter-overrides \
-        ForgeDomainName=codesmith.ch2
+        ForgeDomainName=codesmith.ch
 ```
 
 kick the release of the current commit with the following command.
 ```
-aws codebuild start-build \
+aws --region us-east-1 codebuild start-build \
     --project-name ForgeBootstrap \
     --source-version $(git rev-parse HEAD) \
     --environment-variables-override \
-        name=DEFAULT_AWS_REGION,value=eu-west-1,type=PLAINTEXT
+        name=AWS_REGION,value=eu-west-1,type=PLAINTEXT
 ```
 
 when the forge is installed in (all) the necessary region(s), you can delete the ForgeBootstrap stack with the following

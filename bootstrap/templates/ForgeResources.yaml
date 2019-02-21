@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: Hyperdrive Core Resources
+Description: Forge Cloudformation Resources
 Parameters:
   Version:
     Type: String
@@ -14,7 +14,7 @@ Resources:
       ServiceToken: !GetAtt S3CleanupFunction.Arn
       ActiveOnlyOnStackDeletion: false
       Bucket: !ImportValue ForgeBuckets-ArtifactsBucketName
-      Prefix: !Sub ".forge/${Version}"
+      Prefix: !Sub ".forgeResources/${Version}"
   # 2. Cloudformation custom resources
   #  CogCondPreAuthRole:
   #    Type: AWS::IAM::Role
