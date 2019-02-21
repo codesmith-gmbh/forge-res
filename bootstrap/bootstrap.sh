@@ -17,7 +17,7 @@ function goArtefacts () {
 }
 
 function deployForgeIam () {
-    echo "Deploying ForgeIam in the ${1} region"
+    echo "# Deploying ForgeIam in the ${1} region"
     cd ${SCRIPT_DIR}
     aws --region ${1} cloudformation deploy \
         --template-file templates/ForgeIam.yaml \
@@ -25,10 +25,11 @@ function deployForgeIam () {
         --capabilities CAPABILITY_NAMED_IAM \
         --role-arn ${CLOUDFORMATION_ROLE_ARN} \
         --no-fail-on-empty-changeset
+    echo ""
 }
 
 function deployForgeBuckets () {
-    echo "Deploying ForgeBuckets in the ${1} region"
+    echo "# Deploying ForgeBuckets in the ${1} region"
     cd ${SCRIPT_DIR}
     aws --region ${1} cloudformation deploy \
         --template-file templates/ForgeBuckets.yaml \
@@ -38,11 +39,12 @@ function deployForgeBuckets () {
         --no-fail-on-empty-changeset \
         --parameter-overrides \
             ForgeDomainName=${FORGE_DOMAIN_NAME}
+    echo ""
 }
 
 function deployForgeResources () {
-    echo "Deploying ForgeResources in the ${1} region"
-    cd ${SCRIPT_DIR}
+    echo "# Deploying ForgeResources in the ${1} region"
+    cd ${SCRIPT_DIR}/..
     S3_BUCKET=$(aws --region ${1} cloudformation describe-stacks --stack-name ForgeBuckets | jq -r '.Stacks[0].Outputs | map(select(.OutputKey=="ArtifactsBucketName"))[0].OutputValue')
 
     aws --region ${1} cloudformation package \
@@ -59,11 +61,12 @@ function deployForgeResources () {
         --no-fail-on-empty-changeset \
         --parameter-overrides \
             Version=${VERSION}
+    echo ""
 }
 
 function deployForgeLogsMaintenance () {
-    echo "Deploying ForgeLogsMaintenance in the ${1} region"
-    cd ${SCRIPT_DIR}
+    echo "# Deploying ForgeLogsMaintenance in the ${1} region"
+    cd ${SCRIPT_DIR}/..
     S3_BUCKET=$(aws --region ${1} cloudformation describe-stacks --stack-name ForgeBuckets | jq -r '.Stacks[0].Outputs | map(select(.OutputKey=="ArtifactsBucketName"))[0].OutputValue')
 
     aws --region ${1} cloudformation package \
@@ -80,42 +83,39 @@ function deployForgeLogsMaintenance () {
         --no-fail-on-empty-changeset \
         --parameter-overrides \
             Version=${VERSION}
+    echo ""
 }
 
 function main () {
-
-    echo "Building go artefacts"
+    echo "# Building go artefacts"
 
     goArtefacts
 
-    echo "Deploying the full stack in the us-east-1 region"
+    echo "# Deploying the forge in the us-east-1 region"
 
     deployForgeIam "us-east-1"
     deployForgeBuckets "us-east-1"
     deployForgeResources "us-east-1"
     deployForgeLogsMaintenance "us-east-1"
 
-
-
     if [[ "${AWS_REGION}" != "us-east-1" ]]; then
-        echo "Deploying the stack ForgeIam on the ${AWS_REGION} region"
+        echo "# Deploying the forge in the ${AWS_REGION} region"
 
         deployForgeIam "${AWS_REGION}"
         deployForgeBuckets "${AWS_REGION}"
         deployForgeResources "${AWS_REGION}"
-
     fi
-
 }
 
 function dev () {
-    deployForgeBuckets "${AWS_REGION}"
+    deployForgeLogsMaintenance "us-east-1"
 }
 
 case $1 in
 	"main") main;;
 	"dev") dev;;
 	*)
-		main
+		echo "Unknown command: ${1}"
+		exit 1
 		;;
 esac

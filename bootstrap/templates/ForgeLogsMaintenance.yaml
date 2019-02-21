@@ -12,13 +12,21 @@ Resources:
       ActiveOnlyOnStackDeletion: false
       Bucket: !ImportValue ForgeBuckets-ArtifactsBucketName
       Prefix: !Sub ".forgeLogChecker/${Version}"
-  ForgeExpirationCheckerFunction:
+  AlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: LogsMaintenance
+  LogsMaintenanceFunction:
     Type: AWS::Serverless::Function
     Properties:
       AutoPublishAlias: live
-      CodeUri: ../../dist/LogsMaintenance
+      CodeUri: ../../dist/linux_amd64/LogsMaintenance
+      Environment:
+        Variables:
+          SNS_ALERT_TOPIC_ARN: !Ref AlertTopic
       Events:
-        - Type: Schedule
+        Job:
+          Type: Schedule
           Properties:
             Schedule: "rate(7 days)"
       Handler: logsMaintenance
@@ -27,13 +35,14 @@ Resources:
         - Version: '2012-10-17'
           Statement:
             - Effect: Allow
-              Sid: ssm
+              Sid: logsEc2
               Action:
                 - "logs:deleteLogGroup"
                 - "logs:deleteLogStream"
                 - "logs:deleteRetentionPolicy"
                 - "logs:describeLogGroups"
                 - "logs:putRetentionPolicy"
+                - "ec2:DescribeRegions"
               Resource:
                 - "*"
       Runtime: go1.x

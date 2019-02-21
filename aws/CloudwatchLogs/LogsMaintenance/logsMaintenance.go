@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/aws/external"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
@@ -26,7 +27,8 @@ func main() {
 	lambda.Start(p.processEvent)
 }
 
-func (p *proc) processEvent() error {
+func (p *proc) processEvent(event events.CloudWatchEvent) error {
+	log.Infow("maintenance", "event", event)
 	regions, err := p.ec2.DescribeRegionsRequest(&ec2.DescribeRegionsInput{}).Send()
 	if err != nil {
 		return errors.Wrapf(err, "could not fetch the list of regions")
@@ -34,6 +36,7 @@ func (p *proc) processEvent() error {
 	problems := make(map[string][]problem)
 	problemCount := 0
 	for _, region := range regions.Regions {
+		log.Infow("Region Maintenance", "region", region)
 		regionName := *region.RegionName
 		ps := p.checkLogGroupExpiration(regionName)
 		problemCount += len(ps)
@@ -66,12 +69,18 @@ func (p *proc) checkLogGroupExpiration(region string) []problem {
 	}
 	for {
 		for _, grp := range grps.LogGroups {
-			if *grp.RetentionInDays != DefaultRetentionInDays {
+			if grp.RetentionInDays == nil || *grp.RetentionInDays != DefaultRetentionInDays {
+				log.Debugw("LogGroup Retention Policy",
+					"region", region,
+					"logGroupName", *grp.LogGroupName,
+					"retentionInDays", DefaultRetentionInDays)
 				_, err := logs.PutRetentionPolicyRequest(&cloudwatchlogs.PutRetentionPolicyInput{
 					LogGroupName:    grp.LogGroupName,
 					RetentionInDays: &DefaultRetentionInDays,
 				}).Send()
-				problems = append(problems, problem{LogGroupName: *grp.LogGroupName, Error: err.Error()})
+				if err != nil {
+					problems = append(problems, problem{LogGroupName: *grp.LogGroupName, Error: err.Error()})
+				}
 			}
 		}
 		nextToken := grps.NextToken
@@ -89,6 +98,7 @@ func (p *proc) checkLogGroupExpiration(region string) []problem {
 }
 
 func (p *proc) alert(problems map[string][]problem, problemCount int) error {
+	log.Debugw("problems", "count", problemCount)
 	subject := fmt.Sprintf("CloudwatchLogs expiration checker and gc has %d problems", problemCount)
 	msg, err := json.Marshal(problems)
 	msgText := string(msg)
