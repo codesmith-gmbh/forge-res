@@ -49,9 +49,7 @@ func (p *proc) processEvent(ctx context.Context, event cfn.Event) (string, map[s
 	switch event.RequestType {
 	case cfn.RequestDelete:
 		return p.deleteDomain(event, properties)
-	case cfn.RequestUpdate:
-		return p.createDomain(event, properties)
-	case cfn.RequestCreate:
+	case cfn.RequestCreate, cfn.RequestUpdate:
 		return p.createDomain(event, properties)
 	default:
 		return common.UnknownRequestType(event)

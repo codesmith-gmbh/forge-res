@@ -3,6 +3,8 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/aws/aws-lambda-go/cfn"
+	"github.com/codesmith-gmbh/forge/aws/testCommon"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"testing"
@@ -18,7 +20,7 @@ func TestDnsPropertiesJson(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	p, err := properties(input)
+	p, err := validateProperties(input)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -35,9 +37,21 @@ func TestDnsPropertiesYaml(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	p, err := properties(input)
+	p, err := validateProperties(input)
 	if err != nil {
 		t.Fatal(err)
 	}
 	fmt.Printf("%+v\n", p)
+}
+
+func TestDeleteUnexistingResource(t *testing.T) {
+	cfg := testCommon.MustTestConfig()
+	p := newProc(cfg)
+	_, _, err := p.deleteCognitoUserPoolClientSettings(
+		cfn.Event{PhysicalResourceID: "aaaaaaaaaaaa"},
+		Properties{UserPoolId: "a_aaaaaaaaaaa", UserPoolClientId: "aaaaaaaaaaaa"},
+	)
+	if err != nil {
+		t.Error(err)
+	}
 }

@@ -143,54 +143,30 @@ Resources:
       Action: lambda:InvokeFunction
       FunctionName: !GetAtt CogCondPreAuthSettingsFunction.Arn
       Principal: cloudformation.amazonaws.com
-  #  CognitoClientSettingsRole:
-  #    Type: AWS::IAM::Role
-  #    Properties:
-  #      AssumeRolePolicyDocument:
-  #        Version: "2012-10-17"
-  #        Statement:
-  #          - Effect: "Allow"
-  #            Principal:
-  #              Service: lambda.amazonaws.com
-  #            Action:
-  #              - "sts:AssumeRole"
-  #      ManagedPolicyArns:
-  #        - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-  #      Policies:
-  #        - PolicyName: cog
-  #          PolicyDocument:
-  #            Version: '2012-10-17'
-  #            Statement:
-  #              - Effect: Allow
-  #                Action:
-  #                  - "cognito-idp:UpdateUserPoolClient"
-  #                Resource:
-  #                  - "*"
-  #  CognitoClientSettingsFunction:
-  #    Type: AWS::Serverless::Function
-  #    Properties:
-  #      AutoPublishAlias: live
-  #      CodeUri: ../../dist/linux_amd64/cogclientset
-  #      Description: Cloudformation Custom Resource for configuring a Cognito User Pool Client.
-  #      Handler: cogclientset
-  #      MemorySize: 128
-  #      Role: !GetAtt CognitoClientSettingsRole.Arn
-  #      Runtime: go1.x
-  #      Timeout: 300
-  #  CognitoClientSettingsLogGroup:
-  #    Type: AWS::Logs::LogGroup
-  #    Properties:
-  #      LogGroupName:
-  #        Fn::Sub:
-  #          - "/aws/lambda/${LambdaName}"
-  #          - LambdaName: !Ref CognitoClientSettingsFunction
-  #      RetentionInDays: 90
-  #  CognitoClientSettingsPermission:
-  #    Type: AWS::Lambda::Permission
-  #    Properties:
-  #      Action: lambda:InvokeFunction
-  #      FunctionName: !GetAtt CognitoClientSettingsFunction.Arn
-  #      Principal: cloudformation.amazonaws.com
+  CognitoUserPoolClientSettingsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      AutoPublishAlias: live
+      CodeUri: ../../dist/linux_amd64/CognitoUserPoolClientSettings
+      Description: Cloudformation Custom Resource for configuring a Cognito User Pool Client.
+      Handler: cognitoUserPoolClientSettings
+      MemorySize: 128
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - "cognito-idp:UpdateUserPoolClient"
+              Resource:
+                - "*"
+      Runtime: go1.x
+      Timeout: 300
+  CognitoUserPoolClientSettingsPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt CognitoUserPoolClientSettingsFunction.Arn
+      Principal: cloudformation.amazonaws.com
   CognitoUserPoolDomainFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -777,22 +753,14 @@ Outputs:
     Value: !GetAtt CogCondPreAuthSettingsFunction.Arn
     Export:
       Name: !Sub "${AWS::StackName}-CogCondPreAuthSettings"
-  #  CognitoClientSettings:
-  #    Value: !GetAtt CognitoClientSettingsFunction.Arn
-  #    Export:
-  #      Name: !Sub "${AWS::StackName}-CognitoClientSettings"
-  #  CognitoClientSettingsAlias:
-  #    Value: !Ref CognitoClientSettingsFunction.Alias
-  #    Export:
-  #      Name: !Sub "${AWS::StackName}-CognitoClientSettingsAlias"
-  #  CognitoClientSettingsVersion:
-  #    Value: !Ref CognitoClientSettingsFunction.Version
-  #    Export:
-  #      Name: !Sub "${AWS::StackName}-CognitoClientSettingsVersion"
+  CognitoUserPoolClientSettings:
+    Value: !GetAtt CognitoUserPoolClientSettingsFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-CognitoUserPoolClientSettings"
   CognitoUserPoolDomain:
     Value: !GetAtt CognitoUserPoolDomainFunction.Arn
     Export:
-      Name: !Sub "${AWS::StackName}-CognitoDomain"
+      Name: !Sub "${AWS::StackName}-CognitoUserPoolDomain"
   #  CognitoIdentityProvider:
   #    Value: !GetAtt CognitoIdentityProviderFunction.Arn
   #    Export:
