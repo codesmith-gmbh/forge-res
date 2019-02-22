@@ -14,6 +14,14 @@ builds:
     binary: DnsCertificate/dnsCertificate
     goos: [linux]
     goarch: [amd64]
+  - main: aws/CloudFormation/CogCondPreAuthSettings/cogCondPreAuthSettings.go
+    binary: CogCondPreAuthSettings/cogCondPreAuthSettings
+    goos: [linux]
+    goarch: [amd64]
+  - main: aws/CloudFormation/CognitoUserPoolDomain/cognitoUserPoolDomain.go
+    binary: CognitoUserPoolDomain/cognitoUserPoolDomain
+    goos: [linux]
+    goarch: [amd64]
   - main: aws/CloudFormation/DnsCertificateCheck/dnsCertificateCheck.go
     binary: DnsCertificateCheck/dnsCertificateCheck
     goos: [linux]

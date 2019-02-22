@@ -43,7 +43,6 @@ import (
 	"github.com/codesmith-gmbh/forge/aws/common"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
-	"strconv"
 )
 
 // The lambda is started using the AWS lambda go sdk. The handler function
@@ -64,19 +63,18 @@ func newProc(cfg aws.Config) *proc {
 	return &proc{apg: apigateway.New(cfg), cf: cloudformation.New(cfg)}
 }
 
-type ApiKeyProperties struct {
+type Properties struct {
 	Ordinal string
 }
 
-func apiKeyProperties(input map[string]interface{}) (ApiKeyProperties, error) {
-	var properties ApiKeyProperties
+func validateProperties(input map[string]interface{}) (Properties, error) {
+	var properties Properties
 	err := mapstructure.Decode(input, &properties)
 	if err != nil {
 		return properties, err
 	}
-	_, err = strconv.ParseUint(properties.Ordinal, 10, 64)
-	if err != nil {
-		return properties, errors.Wrapf(err, "Ordinal is obligatory and must be a uint64: %s", properties.Ordinal)
+	if properties.Ordinal == "" {
+		return properties, errors.Wrap(err, "Ordinal is obligatory")
 	}
 
 	return properties, nil
@@ -84,7 +82,7 @@ func apiKeyProperties(input map[string]interface{}) (ApiKeyProperties, error) {
 
 // It is not possible to update the resource, if the ordinal changes, a new resource is allocated.
 func (p *proc) processEvent(ctx context.Context, event cfn.Event) (string, map[string]interface{}, error) {
-	properties, err := apiKeyProperties(event.ResourceProperties)
+	properties, err := validateProperties(event.ResourceProperties)
 	if err != nil {
 		return "", nil, err
 	}
@@ -100,7 +98,7 @@ func (p *proc) processEvent(ctx context.Context, event cfn.Event) (string, map[s
 
 // To create the Api Key, we first retrieve the name of the stack and concatenate with the LogicalResourceId and Ordinal to create
 // The Api Key Name.
-func (p *proc) createApiKey(event cfn.Event, properties ApiKeyProperties) (string, map[string]interface{}, error) {
+func (p *proc) createApiKey(event cfn.Event, properties Properties) (string, map[string]interface{}, error) {
 	stack, err := p.cf.DescribeStacksRequest(&cloudformation.DescribeStacksInput{
 		StackName: &event.StackID,
 	}).Send()

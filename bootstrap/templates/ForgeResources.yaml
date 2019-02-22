@@ -90,7 +90,7 @@ Resources:
       Handler: apiKey
       MemorySize: 128
       Policies:
-        - Version: '2012-10-17'
+        - Version: "2012-10-17"
           Statement:
             - Effect: Allow
               Sid: apikey
@@ -113,60 +113,36 @@ Resources:
       Action: lambda:InvokeFunction
       FunctionName: !GetAtt ApiKeyFunction.Arn
       Principal: cloudformation.amazonaws.com
-  #  CogCondPreAuthSettingsRole:
-  #    Type: AWS::IAM::Role
-  #    Properties:
-  #      AssumeRolePolicyDocument:
-  #        Version: "2012-10-17"
-  #        Statement:
-  #          - Effect: "Allow"
-  #            Principal:
-  #              Service: lambda.amazonaws.com
-  #            Action:
-  #              - "sts:AssumeRole"
-  #      ManagedPolicyArns:
-  #        - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-  #      Policies:
-  #        - PolicyName: ssm
-  #          PolicyDocument:
-  #            Version: '2012-10-17'
-  #            Statement:
-  #              - Effect: Allow
-  #                Sid: ssm
-  #                Action:
-  #                  - "ssm:DeleteParameter"
-  #                  - "ssm:DescribeParameters"
-  #                  - "ssm:GetParametersByPath"
-  #                  - "ssm:GetParameter"
-  #                  - "ssm:GetParameters"
-  #                  - "ssm:PutParameter"
-  #                Resource:
-  #                  - "arn:aws:ssm:*:*:parameter/hyperdrive/cog_cond_pre_auth/*"
-  #  CogCondPreAuthSettingsFunction:
-  #    Type: AWS::Serverless::Function
-  #    Properties:
-  #      AutoPublishAlias: live
-  #      CodeUri: ../../dist/linux_amd64/cog_cond_pre_auth_settings
-  #      Description: Cloudformation Custom Resource for CogCondPreAuthSettings
-  #      Handler: cog_cond_pre_auth_settings
-  #      MemorySize: 128
-  #      Role: !GetAtt CogCondPreAuthSettingsRole.Arn
-  #      Runtime: go1.x
-  #      Timeout: 300
-  #  CogCondPreAuthSettingsLogGroup:
-  #    Type: AWS::Logs::LogGroup
-  #    Properties:
-  #      LogGroupName:
-  #        Fn::Sub:
-  #          - "/aws/lambda/${LambdaName}"
-  #          - LambdaName: !Ref CogCondPreAuthSettingsFunction
-  #      RetentionInDays: 90
-  #  CogCondPreAuthSettingsPermission:
-  #    Type: AWS::Lambda::Permission
-  #    Properties:
-  #      Action: lambda:InvokeFunction
-  #      FunctionName: !GetAtt CogCondPreAuthSettingsFunction.Arn
-  #      Principal: cloudformation.amazonaws.com
+  CogCondPreAuthSettingsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      AutoPublishAlias: live
+      CodeUri: ../../dist/linux_amd64/CogCondPreAuthSettings
+      Description: Cloudformation Custom Resource for CogCondPreAuthSettings
+      Handler: cogCondPreAuthSettings
+      MemorySize: 128
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Sid: ssm
+              Action:
+                - "ssm:DeleteParameter"
+                - "ssm:DescribeParameters"
+                - "ssm:GetParametersByPath"
+                - "ssm:GetParameter"
+                - "ssm:GetParameters"
+                - "ssm:PutParameter"
+              Resource:
+                - "arn:aws:ssm:*:*:parameter/codesmith-forge/CogCondPreAuth/*"
+      Runtime: go1.x
+      Timeout: 300
+  CogCondPreAuthSettingsPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt CogCondPreAuthSettingsFunction.Arn
+      Principal: cloudformation.amazonaws.com
   #  CognitoClientSettingsRole:
   #    Type: AWS::IAM::Role
   #    Properties:
@@ -215,56 +191,32 @@ Resources:
   #      Action: lambda:InvokeFunction
   #      FunctionName: !GetAtt CognitoClientSettingsFunction.Arn
   #      Principal: cloudformation.amazonaws.com
-  #  CognitoDomainRole:
-  #    Type: AWS::IAM::Role
-  #    Properties:
-  #      AssumeRolePolicyDocument:
-  #        Version: "2012-10-17"
-  #        Statement:
-  #          - Effect: "Allow"
-  #            Principal:
-  #              Service: lambda.amazonaws.com
-  #            Action:
-  #              - "sts:AssumeRole"
-  #      ManagedPolicyArns:
-  #        - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-  #      Policies:
-  #        - PolicyName: cog
-  #          PolicyDocument:
-  #            Version: '2012-10-17'
-  #            Statement:
-  #              - Effect: Allow
-  #                Action:
-  #                  - "cognito-idp:CreateUserPoolDomain"
-  #                  - "cognito-idp:DeleteUserPoolDomain"
-  #                  - "cloudfront:UpdateDistribution"
-  #                Resource:
-  #                  - "*"
-  #  CognitoDomainFunction:
-  #    Type: AWS::Serverless::Function
-  #    Properties:
-  #      AutoPublishAlias: live
-  #      CodeUri: ../../dist/linux_amd64/cogdomain
-  #      Description: Cloudformation Custom Resource for Cognito User Pool Domain
-  #      Handler: cogdomain
-  #      MemorySize: 128
-  #      Role: !GetAtt CognitoDomainRole.Arn
-  #      Runtime: go1.x
-  #      Timeout: 300
-  #  CognitoDomainLogGroup:
-  #    Type: AWS::Logs::LogGroup
-  #    Properties:
-  #      LogGroupName:
-  #        Fn::Sub:
-  #          - "/aws/lambda/${LambdaName}"
-  #          - LambdaName: !Ref CognitoDomainFunction
-  #      RetentionInDays: 90
-  #  CognitoDomainPermission:
-  #    Type: AWS::Lambda::Permission
-  #    Properties:
-  #      Action: lambda:InvokeFunction
-  #      FunctionName: !GetAtt CognitoDomainFunction.Arn
-  #      Principal: cloudformation.amazonaws.com
+  CognitoUserPoolDomainFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      AutoPublishAlias: live
+      CodeUri: ../../dist/linux_amd64/CognitoUserPoolDomain
+      Description: Cloudformation Custom Resource for Cognito User Pool Domain
+      Handler: cognitoUserPoolDomain
+      MemorySize: 128
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - "cognito-idp:CreateUserPoolDomain"
+                - "cognito-idp:DeleteUserPoolDomain"
+                - "cloudfront:UpdateDistribution"
+              Resource:
+                - "*"
+      Runtime: go1.x
+      Timeout: 300
+  CognitoUserPoolDomainPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt CognitoUserPoolDomainFunction.Arn
+      Principal: cloudformation.amazonaws.com
   #  CognitoIdentityProviderRole:
   #    Type: AWS::IAM::Role
   #    Properties:
@@ -821,18 +773,10 @@ Outputs:
     Value: !GetAtt ApiKeyFunction.Arn
     Export:
       Name: !Sub "${AWS::StackName}-ApiKey"
-  #  CogCondPreAuthSettings:
-  #    Value: !GetAtt CogCondPreAuthSettingsFunction.Arn
-  #    Export:
-  #      Name: !Sub "${AWS::StackName}-CogCondPreAuthSettings"
-  #  CogCondPreAuthSettingsAlias:
-  #    Value: !Ref CogCondPreAuthSettingsFunction.Alias
-  #    Export:
-  #      Name: !Sub "${AWS::StackName}-CogCondPreAuthSettingsAlias"
-  #  CogCondPreAuthSettingsVersion:
-  #    Value: !Ref CogCondPreAuthSettingsFunction.Version
-  #    Export:
-  #      Name: !Sub "${AWS::StackName}-CogCondPreAuthSettingsVersion"
+  CogCondPreAuthSettings:
+    Value: !GetAtt CogCondPreAuthSettingsFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-CogCondPreAuthSettings"
   #  CognitoClientSettings:
   #    Value: !GetAtt CognitoClientSettingsFunction.Arn
   #    Export:
@@ -845,18 +789,10 @@ Outputs:
   #    Value: !Ref CognitoClientSettingsFunction.Version
   #    Export:
   #      Name: !Sub "${AWS::StackName}-CognitoClientSettingsVersion"
-  #  CognitoDomain:
-  #    Value: !GetAtt CognitoDomainFunction.Arn
-  #    Export:
-  #      Name: !Sub "${AWS::StackName}-CognitoDomain"
-  #  CognitoDomainAlias:
-  #    Value: !Ref CognitoDomainFunction.Alias
-  #    Export:
-  #      Name: !Sub "${AWS::StackName}-CognitoDomainAlias"
-  #  CognitoDomainVersion:
-  #    Value: !Ref CognitoDomainFunction.Version
-  #    Export:
-  #      Name: !Sub "${AWS::StackName}-CognitoDomainVersion"
+  CognitoUserPoolDomain:
+    Value: !GetAtt CognitoUserPoolDomainFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-CognitoDomain"
   #  CognitoIdentityProvider:
   #    Value: !GetAtt CognitoIdentityProviderFunction.Arn
   #    Export:

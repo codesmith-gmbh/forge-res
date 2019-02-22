@@ -11,3 +11,8 @@ const SsmParameterPrefix = "/codesmith-forge"
 func SequenceParameterName(sequenceName string) string {
 	return SsmParameterPrefix + "/Sequence" + sequenceName
 }
+
+// CogCondPreAuth naming
+func CogCondPreAuthParameterName(userPoolId string, userPoolClientId string) string {
+	return SsmParameterPrefix + "/CogCondPreAuth/" + userPoolId + "/" + userPoolClientId
+}

@@ -1,13 +1,12 @@
 package main
 
 import (
-	"github.com/aws/aws-sdk-go-v2/aws/external"
-	"github.com/codesmith-gmbh/forge/aws/common"
+	"github.com/codesmith-gmbh/forge/aws/testCommon"
 	"testing"
 )
 
 func TestDeletionUnexistingApiKey(t *testing.T) {
-	cfg := common.MustConfig(external.WithSharedConfigProfile("codesmith"))
+	cfg := testCommon.MustTestConfig()
 	p := newProc(cfg)
 	var apiKeyId = "??????"
 	_, _, err := p.deleteApiKey(apiKeyId)

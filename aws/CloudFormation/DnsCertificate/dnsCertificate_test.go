@@ -3,10 +3,9 @@ package main
 import (
 	"github.com/aws/aws-lambda-go/cfn"
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/aws/external"
 	"github.com/aws/aws-sdk-go-v2/service/acm"
 	"github.com/aws/aws-sdk-go-v2/service/route53"
-	"github.com/codesmith-gmbh/forge/aws/common"
+	"github.com/codesmith-gmbh/forge/aws/testCommon"
 	"github.com/pkg/errors"
 	"strings"
 	"testing"
@@ -292,7 +291,7 @@ type testProc struct {
 }
 
 func mustTestProc() *testProc {
-	cfg := common.MustConfig(external.WithSharedConfigProfile("codesmith"))
+	cfg := testCommon.MustTestConfig()
 	cm := acm.New(cfg)
 	acmService := func(_ Properties) (*acm.ACM, error) {
 		return cm, nil
