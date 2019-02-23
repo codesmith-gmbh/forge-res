@@ -134,17 +134,19 @@ Resources:
                   - "arn:aws:cloudformation:*:*:stack/ForgeIam/*"
                   - "arn:aws:cloudformation:*:*:stack/ForgeBuckets/*"
                   - "arn:aws:cloudformation:*:*:stack/ForgeResources/*"
+                  - "arn:aws:cloudformation:*:*:stack/ForgeLogsMaintenance/*"
                   - "arn:aws:cloudformation:*:aws:transform/Serverless-2016-10-31"
               - Sid: cloudformation2
                 Effect: Allow
                 Action:
                   - "cloudformation:DescribeStacks"
                 Resource:
-                  - "arn:aws:cloudformation:*:*:stack/ForgeBootstrap/*"
-              - Sid: cloudformation3
+                  - "arn:aws:cloudformation:*:*:stack/Forge*"
+              - Sid: read
                 Effect: Allow
                 Action:
                   - "cloudformation:GetTemplateSummary"
+                  - "kms:DescribeKey"
                 Resource:
                   - "*"
               - Sid: iam
