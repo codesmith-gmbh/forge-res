@@ -15,72 +15,7 @@ Resources:
       ActiveOnlyOnStackDeletion: false
       Bucket: !ImportValue ForgeBuckets-ArtifactsBucketName
       Prefix: !Sub ".forgeResources/${Version}"
-  # 2. Cloudformation custom resources
-  #  CogCondPreAuthRole:
-  #    Type: AWS::IAM::Role
-  #    Properties:
-  #      AssumeRolePolicyDocument:
-  #        Version: "2012-10-17"
-  #        Statement:
-  #          - Effect: "Allow"
-  #            Principal:
-  #              Service: lambda.amazonaws.com
-  #            Action:
-  #              - "sts:AssumeRole"
-  #      ManagedPolicyArns:
-  #        - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-  #      Policies:
-  #        - PolicyName: ssm
-  #          PolicyDocument:
-  #            Version: '2012-10-17'
-  #            Statement:
-  #              - Effect: Allow
-  #                Sid: ssm
-  #                Action:
-  #                  - "ssm:DescribeParameters"
-  #                  - "ssm:GetParametersByPath"
-  #                  - "ssm:GetParameter"
-  #                  - "ssm:GetParameters"
-  #                Resource:
-  #                  - "arn:aws:ssm:*:*:parameter/hyperdrive/cog_cond_pre_auth/*"
-  #  CogCondPreAuthFunction:
-  #    Type: AWS::Serverless::Function
-  #    Properties:
-  #      AutoPublishAlias: live
-  #      CodeUri: ../../dist/linux_amd64/cog_cond_pre_auth
-  #      Runtime: go1.x
-  #      Handler: cog_cond_pre_auth
-  #      Role: !GetAtt CogCondPreAuthRole.Arn
-  #  CogCondPreAuthLogs:
-  #    Type: AWS::Logs::LogGroup
-  #    Properties:
-  #      LogGroupName:
-  #        Fn::Sub:
-  #          - "/aws/lambda/${LambdaName}"
-  #          - LambdaName: !Ref CogCondPreAuthFunction
-  #      RetentionInDays: 90
-  #  CogCondPreAuthPermission:
-  #    Type: AWS::Lambda::Permission
-  #    Properties:
-  #      Action: lambda:InvokeFunction
-  #      FunctionName: !GetAtt CogCondPreAuthFunction.Arn
-  #      Principal: cognito-idp.amazonaws.com
-  #  CfApiKeyRole:
-  #    Type: AWS::IAM::Role
-  #    Properties:
-  #      AssumeRolePolicyDocument:
-  #        Version: "2012-10-17"
-  #        Statement:
-  #          - Effect: "Allow"
-  #            Principal:
-  #              Service: lambda.amazonaws.com
-  #            Action:
-  #              - "sts:AssumeRole"
-  #      ManagedPolicyArns:
-  #        - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-  #      Policies:
-  #        - PolicyName: apikey
-  #          PolicyDocument:
+  # 2. Cloudformation
   ApiKeyFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -518,61 +453,7 @@ Resources:
       Action: lambda:InvokeFunction
       FunctionName: !GetAtt SequenceValueFunction.Arn
       Principal: cloudformation.amazonaws.com
-#  RotateCfApiKeyRole:
-#    Type: AWS::IAM::Role
-#    Properties:
-#      AssumeRolePolicyDocument:
-#        Version: "2012-10-17"
-#        Statement:
-#          - Effect: "Allow"
-#            Principal:
-#              Service: lambda.amazonaws.com
-#            Action:
-#              - "sts:AssumeRole"
-#      ManagedPolicyArns:
-#        - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-#      Policies:
-#        - PolicyName: cloudformation
-#          PolicyDocument:
-#            Version: '2012-10-17'
-#            Statement:
-#              - Effect: Allow
-#                Action:
-#                  - "cloudformation:CreateChangeSet"
-#                  - "cloudformation:DeleteChangeSet"
-#                  - "cloudformation:DescribeChangeSet"
-#                  - "cloudformation:DescribeStacks"
-#                  - "cloudformation:ExecuteChangeSet"
-#                  - "cloudformation:UpdateStack"
-#                  - "events:DescribeRule"
-#                Resource:
-#                  - "*"
-#  RotateCfApiKeyFunction:
-#    Type: AWS::Serverless::Function
-#    Properties:
-#      AutoPublishAlias: live
-#      CodeUri: ../../dist/linux_amd64/rotatecfapikey
-#      Description: Cloudformation Custom Resource for apg api keys for Cloudfront.
-#      Handler: rotatecfapikey
-#      MemorySize: 128
-#      Role: !GetAtt RotateCfApiKeyRole.Arn
-#      Runtime: go1.x
-#      Timeout: 300
-#  RotateCfApiKeyLogGroup:
-#    Type: AWS::Logs::LogGroup
-#    Properties:
-#      LogGroupName:
-#        Fn::Sub:
-#          - "/aws/lambda/${LambdaName}"
-#          - LambdaName: !Ref RotateCfApiKeyFunction
-#      RetentionInDays: 90
-#  RotateCfApiKeyPermission:
-#    Type: AWS::Lambda::Permission
-#    Properties:
-#      Action: lambda:InvokeFunction
-#      FunctionName: !GetAtt RotateCfApiKeyFunction.Arn
-#      Principal: events.amazonaws.com
-  # Code commit function
+  # 3. CodeCommit
   PipelineTriggerFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -601,23 +482,42 @@ Resources:
       Action: lambda:InvokeFunction
       FunctionName: !GetAtt PipelineTriggerFunction.Arn
       Principal: codecommit.amazonaws.com
+  # 4. Cognito
+  CogCondPreAuthFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      AutoPublishAlias: live
+      CodeUri: ../../dist/linux_amd64/CogCondPreAuth
+      Handler: cogCondPreAuth
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Sid: ssm
+              Action:
+                - "ssm:DescribeParameters"
+                - "ssm:GetParametersByPath"
+                - "ssm:GetParameter"
+                - "ssm:GetParameters"
+              Resource:
+                - "arn:aws:ssm:*:*:parameter/codesmith-forge/CogCondPreAuth/*"
+      Runtime: go1.x
+      Timeout: 10
+  CogCondPreAuthPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt CogCondPreAuthFunction.Arn
+      Principal: cognito-idp.amazonaws.com
 Outputs:
-  #  CogCondPreAuth:
-  #    Value: !GetAtt CogCondPreAuthFunction.Arn
-  #    Export:
-  #      Name: !Sub "${AWS::StackName}-CogCondPreAuth"
-  #  CogCondPreAuthAlias:
-  #    Value: !Ref CogCondPreAuthFunction.Alias
-  #    Export:
-  #      Name: !Sub "${AWS::StackName}-CogCondPreAuthAlias"
-  #  CogCondPreAuthVersion:
-  #    Value: !Ref CogCondPreAuthFunction.Version
-  #    Export:
-  #      Name: !Sub "${AWS::StackName}-CogCondPreAuthVersion"
   CfApiKey:
     Value: !GetAtt ApiKeyFunction.Arn
     Export:
       Name: !Sub "${AWS::StackName}-ApiKey"
+  CogCondPreAuth:
+    Value: !GetAtt CogCondPreAuthFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-CogCondPreAuth"
   CogCondPreAuthSettings:
     Value: !GetAtt CogCondPreAuthSettingsFunction.Arn
     Export:
@@ -658,18 +558,6 @@ Outputs:
     Value: !GetAtt SequenceValueFunction.Arn
     Export:
       Name: !Sub "${AWS::StackName}-SequenceValue"
-#  RotateCfApiKey:
-#    Value: !GetAtt RotateCfApiKeyFunction.Arn
-#    Export:
-#      Name: !Sub "${AWS::StackName}-RotateCfApiKey"
-#  RotateCfApiKeyAlias:
-#    Value: !Ref RotateCfApiKeyFunction.Alias
-#    Export:
-#      Name: !Sub "${AWS::StackName}-RotateCfApiKeyAlias"
-#  RotateCfApiKeyVersion:
-#    Value: !Ref RotateCfApiKeyFunction.Version
-#    Export:
-#      Name: !Sub "${AWS::StackName}-RotateCfApiKeyVersion"
   PipelineTrigger:
     Value: !GetAtt PipelineTriggerFunction.Arn
     Export:

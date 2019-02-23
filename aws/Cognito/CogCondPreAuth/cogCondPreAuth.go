@@ -1,9 +1,9 @@
-// # cogCondPreAuth
+// # CogCondPreAuth
 //
-// The cogCondPreAuth lambda function is as a hook for the PreAuth event of a Cognito User and is used in conjunction
+// The CogCondPreAuth lambda function is as a hook for the PreAuth event of a Cognito User and is used in conjunction
 // with the cogCondPreAuthSettings custom Cloudformation resource for its configuration.
 //
-// The cogCondPreAuth lambda function will allow/deny authentication based on the email address of the user logging in.
+// The CogCondPreAuth lambda function will allow/deny authentication based on the email address of the user logging in.
 // Domains and individual email addresses can be whitelisted (via the cogCondPreAuthSettings custom CloudFormation
 // resource.
 //
@@ -13,11 +13,10 @@ import (
 	"encoding/json"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/aws/aws-sdk-go-v2/aws/external"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
 	"github.com/codesmith-gmbh/forge/aws/common"
 	"github.com/pkg/errors"
-	"go.uber.org/zap"
 	"strings"
 )
 
@@ -34,32 +33,33 @@ type Settings struct {
 	Emails  []string `json:"emails"`
 }
 
-var zero = CognitoEventUserPoolsPreAuth{}
-var ssms *ssm.SSM
-var log *zap.SugaredLogger
+var (
+	zero = CognitoEventUserPoolsPreAuth{}
+	log  = common.MustSugaredLogger()
+)
 
 func main() {
-	logger, err := common.Logger()
-	if err != nil {
-		panic(err)
-	}
-	defer common.SyncLog(logger)
-	log = logger.Sugar()
-	cfg, err := external.LoadDefaultAWSConfig()
-	if err != nil {
-		log.Fatalw("could not get aws config", "err", err)
-	}
-	ssms = ssm.New(cfg)
-	lambda.Start(processEvent)
+	defer common.SyncSugaredLogger(log)
+	cfg := common.MustConfig()
+	p := newProc(cfg)
+	lambda.Start(p.processEvent)
 }
 
-func processEvent(event CognitoEventUserPoolsPreAuth) (CognitoEventUserPoolsPreAuth, error) {
+type proc struct {
+	ssm *ssm.SSM
+}
+
+func newProc(cfg aws.Config) *proc {
+	return &proc{ssm: ssm.New(cfg)}
+}
+
+func (p *proc) processEvent(event CognitoEventUserPoolsPreAuth) (CognitoEventUserPoolsPreAuth, error) {
 	log.Debugw("received pre auth event", "event", event)
 
 	// 1. we fetch the Settings for the given user pool
 	userPoolId := event.UserPoolID
 	clientId := event.CallerContext.ClientID
-	settings, err := fetchSettings(userPoolId, clientId)
+	settings, err := p.fetchSettings(userPoolId, clientId)
 	if err != nil {
 		return zero, err
 	}
@@ -82,11 +82,11 @@ func processEvent(event CognitoEventUserPoolsPreAuth) (CognitoEventUserPoolsPreA
 	return event, nil
 }
 
-func fetchSettings(userPoolId, clientId string) (Settings, error) {
+func (p *proc) fetchSettings(userPoolId, clientId string) (Settings, error) {
 	var settings Settings
-	parameterName := "/codesmith-forge/cogCondPreAuth/" + userPoolId + "/" + clientId
+	parameterName := "/codesmith-forge/CogCondPreAuth/" + userPoolId + "/" + clientId
 	log.Debugw("fetch settings", "parameterName", parameterName)
-	parameter, err := ssms.GetParameterRequest(&ssm.GetParameterInput{
+	parameter, err := p.ssm.GetParameterRequest(&ssm.GetParameterInput{
 		Name: &parameterName,
 	}).Send()
 	if err != nil {

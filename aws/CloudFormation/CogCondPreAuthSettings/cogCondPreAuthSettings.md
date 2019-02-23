@@ -15,9 +15,7 @@ to your cloudformation template (yaml notation, json is similar)
 UserPoolPreAuthSettings:
   Type: Custom::CogCondPreAuthSettings
   Properties:
-    ServiceToken:
-      Fn::ImportValue:
-        !Sub ${HyperdriveCore}-CogCondPreAuthSettings
+    ServiceToken: !ImportValue ForgeResources-CogCondPreAuthSettings
     UserPoolId: <userpool-id>
 	   UserPoolCliendId: <userpoolclient-id>
     All: false

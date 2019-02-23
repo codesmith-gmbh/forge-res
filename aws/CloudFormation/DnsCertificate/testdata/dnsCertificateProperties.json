@@ -6,7 +6,7 @@
   ],
   "Tags": [
     {
-      "Key": "hyperdrive:project",
+      "Key": "forge:project",
       "Value": "test"
     }
   ]

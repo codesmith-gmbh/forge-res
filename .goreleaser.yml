@@ -10,10 +10,6 @@ builds:
     binary: ApiKey/apiKey
     goos: [linux]
     goarch: [amd64]
-  - main: aws/CloudFormation/DnsCertificate/dnsCertificate.go
-    binary: DnsCertificate/dnsCertificate
-    goos: [linux]
-    goarch: [amd64]
   - main: aws/CloudFormation/CogCondPreAuthSettings/cogCondPreAuthSettings.go
     binary: CogCondPreAuthSettings/cogCondPreAuthSettings
     goos: [linux]
@@ -28,6 +24,10 @@ builds:
     goarch: [amd64]
   - main: aws/CloudFormation/CognitoUserPoolDomain/cognitoUserPoolDomain.go
     binary: CognitoUserPoolDomain/cognitoUserPoolDomain
+    goos: [linux]
+    goarch: [amd64]
+  - main: aws/CloudFormation/DnsCertificate/dnsCertificate.go
+    binary: DnsCertificate/dnsCertificate
     goos: [linux]
     goarch: [amd64]
   - main: aws/CloudFormation/DnsCertificateCheck/dnsCertificateCheck.go
@@ -60,6 +60,10 @@ builds:
     goarch: [amd64]
   - main: aws/CodeCommit/PipelineTrigger/pipelineTrigger.go
     binary: PipelineTrigger/pipelineTrigger
+    goos: [linux]
+    goarch: [amd64]
+  - main: aws/Cognito/CogCondPreAuth/cogCondPreAuth.go
+    binary: CogCondPreAuth/cogCondPreAuth
     goos: [linux]
     goarch: [amd64]
 

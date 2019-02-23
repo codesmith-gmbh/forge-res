@@ -5,12 +5,6 @@ certification with DNS verification, only the old method via email. This
 custom resource lambda function allows the creation of DNS verified ACM
 SSL certificate.
 
-## Usage
-
-To use the custom resource in your cloudformation template, you must
-first install the hyperdrive core in your account. Alternativaly, you
-can install it manually. We describe the usage with the hyperdive core.
-
 ### Syntax
 
 To create a new ACM certificate, add the following resource to your
@@ -106,27 +100,9 @@ The following yaml fragment create a SSL certificate for the domains
 TestComCertificate:
   Type: Custom::DnsCertificate
   Properties:
-    ServiceToken:
-      Fn::ImportValue:
-        !Sub ${HyperdriveCore}-DnsCertificate
+    ServiceToken: !ImportValue ForgeResources-DnsCertificate
     DomainName: test.com
     Region: us-east-1
     SubjectAlternativeNames:
     - hello.test.com
 ```
-
-The created resouce will have a `Ref` of the form
-`arn:aws:acm:us-east-1:xxxxxxxxx:certificate/yyyyyyyyyyyyyyyyyyyyyyyy`
-and 6 additional attributes, namely:
-
-1. `test.com-RecordName`: the name of the DNS record for the
-   certificate validation of the domain `test.com`.
-2. `test.com-RecordValue`: the value for the DNS record for the
-   validation of the domain `test.com`.
-3. `test.com-RecordType`: the type of the DNS record.
-4. `hello.test.com-RecordName`: the name of the DNS record for the
-   certificate validation of the domain `hello.test.com`.
-5. `hello.test.com-RecordValue`: the value for the DNS record for the
-   certification validation of the domain `hello.test.com`
-6. `hello.test.com-RecordType`: the type of the DNS record.
- 

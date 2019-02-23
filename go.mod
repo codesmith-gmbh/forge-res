@@ -1,7 +1,6 @@
 module github.com/codesmith-gmbh/forge
 
 require (
-	github.com/DEEP-IMPACT-AG/hyperdrive v0.0.0
 	github.com/alecthomas/participle v0.2.0
 	github.com/aws/aws-lambda-go v1.8.2
 	github.com/aws/aws-sdk-go-v2 v0.7.0

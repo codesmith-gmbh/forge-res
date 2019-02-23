@@ -12,7 +12,7 @@
 // ListenerRuleSwapper:
 //   Type: Custom::ListenerRuleSwapper
 //   Properties:
-//     ServiceToken: !ImportValue HyperdriveCore-ListenerRuleSwapper
+//     ServiceToken: !ImportValue ForgeResources-ListenerRuleSwapper
 //	   ListenerArn: <listener arn>
 //     Rule1Arn: <rule arn>
 //	   Rule2Arn: <rule arn>
