@@ -4,8 +4,8 @@ Description: Forge Cloudformation Resources
 Parameters:
   Version:
     Type: String
-#  HyperdriveKmsKeyId:
-#    Type: String
+  SsmKmsKeyArn:
+    Type: String
 Resources:
   # 1. S3 Release Cleanup
   S3ReleaseCleanup:
@@ -193,73 +193,41 @@ Resources:
       Action: lambda:InvokeFunction
       FunctionName: !GetAtt CognitoUserPoolDomainFunction.Arn
       Principal: cloudformation.amazonaws.com
-  #  CognitoIdentityProviderRole:
-  #    Type: AWS::IAM::Role
-  #    Properties:
-  #      AssumeRolePolicyDocument:
-  #        Version: "2012-10-17"
-  #        Statement:
-  #          - Effect: "Allow"
-  #            Principal:
-  #              Service: lambda.amazonaws.com
-  #            Action:
-  #              - "sts:AssumeRole"
-  #      ManagedPolicyArns:
-  #        - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-  #      Policies:
-  #        - PolicyName: idp
-  #          PolicyDocument:
-  #            Version: '2012-10-17'
-  #            Statement:
-  #              - Effect: Allow
-  #                Action:
-  #                  - "cognito-idp:CreateIdentityProvider"
-  #                  - "cognito-idp:DeleteIdentityProvider"
-  #                  - "cognito-idp:UpdateIdentityProvider"
-  #                Resource:
-  #                  - "*"
-  #        - PolicyName: ssm
-  #          PolicyDocument:
-  #            Version: '2012-10-17'
-  #            Statement:
-  #              - Effect: Allow
-  #                Action:
-  #                  - ssm:GetParameter
-  #                Resource: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/hyperdrive/cogidp/*"
-  #        - PolicyName: kms
-  #          PolicyDocument:
-  #            Version: '2012-10-17'
-  #            Statement:
-  #              - Effect: Allow
-  #                Action:
-  #                  - kms:Decrypt
-  #                Resource:
-  #                  - !Sub "arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/${HyperdriveKmsKeyId}"
-  #  CognitoIdentityProviderFunction:
-  #    Type: AWS::Serverless::Function
-  #    Properties:
-  #      AutoPublishAlias: live
-  #      CodeUri: ../../dist/linux_amd64/cogidp
-  #      Description: Cloudformation Custom Resource for cognito user pool idendity provider
-  #      Handler: cogidp
-  #      MemorySize: 128
-  #      Role: !GetAtt CognitoIdentityProviderRole.Arn
-  #      Runtime: go1.x
-  #      Timeout: 300
-  #  CognitoIdentityProviderLogGroup:
-  #    Type: AWS::Logs::LogGroup
-  #    Properties:
-  #      LogGroupName:
-  #        Fn::Sub:
-  #          - "/aws/lambda/${LambdaName}"
-  #          - LambdaName: !Ref CognitoIdentityProviderFunction
-  #      RetentionInDays: 90
-  #  CognitoIdentityProviderPermission:
-  #    Type: AWS::Lambda::Permission
-  #    Properties:
-  #      Action: lambda:InvokeFunction
-  #      FunctionName: !GetAtt CognitoIdentityProviderFunction.Arn
-  #      Principal: cloudformation.amazonaws.com
+  CognitoIdentityProviderFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      AutoPublishAlias: live
+      CodeUri: ../../dist/linux_amd64/CognitoIdentityProvider
+      Description: Cloudformation Custom Resource for cognito user pool idendity provider
+      Handler: cognitoIdentityProvider
+      MemorySize: 128
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - "cognito-idp:CreateIdentityProvider"
+                - "cognito-idp:DeleteIdentityProvider"
+                - "cognito-idp:UpdateIdentityProvider"
+              Resource:
+                - "*"
+            - Effect: Allow
+              Action:
+                - ssm:GetParameter
+              Resource: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/codesmith-forge/CognitoIdentityProvider/*"
+            - Effect: Allow
+              Action:
+                - kms:Decrypt
+              Resource:
+                - !Ref SsmKmsKeyArn
+      Runtime: go1.x
+      Timeout: 300
+  CognitoIdentityProviderPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt CognitoIdentityProviderFunction.Arn
+      Principal: cloudformation.amazonaws.com
   DnsCertificateSNSTopic:
     Type: AWS::SNS::Topic
   DnsCertificateFunction:
@@ -395,72 +363,45 @@ Resources:
             }
           - CheckArn: !GetAtt DnsCertificateCheckFunction.Arn
       RoleArn: !GetAtt DnsCertificateWaitStateMachineRole.Arn
-  #  EcrCleanupRole:
-  #    Type: AWS::IAM::Role
-  #    Properties:
-  #      AssumeRolePolicyDocument:
-  #        Version: "2012-10-17"
-  #        Statement:
-  #          - Effect: "Allow"
-  #            Principal:
-  #              Service: lambda.amazonaws.com
-  #            Action:
-  #              - "sts:AssumeRole"
-  #      ManagedPolicyArns:
-  #        - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-  #      Policies:
-  #        - PolicyName: ecr
-  #          PolicyDocument:
-  #            Version: '2012-10-17'
-  #            Statement:
-  #              - Effect: Allow
-  #                Action:
-  #                  - "ecr:*"
-  #                  - "cloudformation:DescribeStacks"
-  #                Resource:
-  #                  - "*"
-  #  EcrCleanupFunction:
-  #    Type: AWS::Serverless::Function
-  #    Properties:
-  #      AutoPublishAlias: live
-  #      CodeUri: ../../dist/linux_amd64/ecrcleanup
-  #      Description: Cloudformation Custom Resource for ECR Cleaning
-  #      Handler: ecrcleanup
-  #      MemorySize: 128
-  #      Role: !GetAtt EcrCleanupRole.Arn
-  #      Runtime: go1.x
-  #      Timeout: 300
-  #  EcrCleanupLogGroup:
-  #    Type: AWS::Logs::LogGroup
-  #    Properties:
-  #      LogGroupName:
-  #        Fn::Sub:
-  #          - "/aws/lambda/${LambdaName}"
-  #          - LambdaName: !Ref EcrCleanupFunction
-  #      RetentionInDays: 90
-  #  EcrCleanupPermission:
-  #    Type: AWS::Lambda::Permission
-  #    Properties:
-  #      Action: lambda:InvokeFunction
-  #      FunctionName: !GetAtt EcrCleanupFunction.Arn
-  #      Principal: cloudformation.amazonaws.com
-  #  ListenerRuleSwapperRole:
-  #    Type: AWS::IAM::Role
-  #    Properties:
-  #      AssumeRolePolicyDocument:
-  #        Version: "2012-10-17"
-  #        Statement:
-  #          - Effect: "Allow"
-  #            Principal:
-  #              Service: lambda.amazonaws.com
-  #            Action:
-  #              - "sts:AssumeRole"
-  #      ManagedPolicyArns:
-  #        - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-  #      Policies:
-  #        - PolicyName: elasticloadbalancing
-  #          PolicyDocument:
-  #            Version: '2012-10-17'
+  EcrCleanupRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service: lambda.amazonaws.com
+            Action:
+              - "sts:AssumeRole"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+
+  EcrCleanupFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      AutoPublishAlias: live
+      CodeUri: ../../dist/linux_amd64/EcrCleanup
+      Description: Cloudformation Custom Resource for ECR Cleaning
+      Handler: ecrCleanup
+      MemorySize: 128
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - "ecr:*"
+                - "cloudformation:DescribeStacks"
+              Resource:
+                - "*"
+      Runtime: go1.x
+      Timeout: 300
+  EcrCleanupPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt EcrCleanupFunction.Arn
+      Principal: cloudformation.amazonaws.com
   ListenerRuleSwapperFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -493,54 +434,6 @@ Resources:
       Action: lambda:InvokeFunction
       FunctionName: !GetAtt ListenerRuleSwapperFunction.Arn
       Principal: cloudformation.amazonaws.com
-  #  LogGroupRole:
-  #    Type: AWS::IAM::Role
-  #    Properties:
-  #      AssumeRolePolicyDocument:
-  #        Version: "2012-10-17"
-  #        Statement:
-  #          - Effect: "Allow"
-  #            Principal:
-  #              Service: lambda.amazonaws.com
-  #            Action:
-  #              - "sts:AssumeRole"
-  #      ManagedPolicyArns:
-  #        - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-  #      Policies:
-  #        - PolicyName: cloudwatchlogs
-  #          PolicyDocument:
-  #            Version: '2012-10-17'
-  #            Statement:
-  #              - Effect: Allow
-  #                Action:
-  #                  - "logs:*"
-  #                Resource:
-  #                  - "*"
-  #  LogGroupFunction:
-  #    Type: AWS::Serverless::Function
-  #    Properties:
-  #      AutoPublishAlias: live
-  #      CodeUri: ../../dist/linux_amd64/loggrp
-  #      Description: Cloudformation Custom Resource for log groups with tags and other regions
-  #      Handler: loggrp
-  #      MemorySize: 128
-  #      Role: !GetAtt LogGroupRole.Arn
-  #      Runtime: go1.x
-  #      Timeout: 300
-  #  LogGroupLogGroup:
-  #    Type: AWS::Logs::LogGroup
-  #    Properties:
-  #      LogGroupName:
-  #        Fn::Sub:
-  #          - "/aws/lambda/${LambdaName}"
-  #          - LambdaName: !Ref LogGroupFunction
-  #      RetentionInDays: 90
-  #  LogGroupPermission:
-  #    Type: AWS::Lambda::Permission
-  #    Properties:
-  #      Action: lambda:InvokeFunction
-  #      FunctionName: !GetAtt LogGroupFunction.Arn
-  #      Principal: cloudformation.amazonaws.com
   S3CleanupFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -679,59 +572,35 @@ Resources:
 #      Action: lambda:InvokeFunction
 #      FunctionName: !GetAtt RotateCfApiKeyFunction.Arn
 #      Principal: events.amazonaws.com
-#  # Code commit function
-#  PipelineTriggerRole:
-#    Type: AWS::IAM::Role
-#    Properties:
-#      AssumeRolePolicyDocument:
-#        Version: "2012-10-17"
-#        Statement:
-#          - Effect: "Allow"
-#            Principal:
-#              Service: lambda.amazonaws.com
-#            Action:
-#              - "sts:AssumeRole"
-#      ManagedPolicyArns:
-#        - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-#      Policies:
-#        - PolicyName: s3
-#          PolicyDocument:
-#            Version: '2012-10-17'
-#            Statement:
-#              - Effect: Allow
-#                Action:
-#                  - "s3:PutObject"
-#                  - "s3:GetObject"
-#                  - "s3:GetObjectVersion"
-#                Resource:
-#                  - Fn::Sub:
-#                      - "${Bucket}/*"
-#                      - Bucket: !ImportValue HyperdriveCore-EventsBucketArn
-#  PipelineTriggerFunction:
-#    Type: AWS::Serverless::Function
-#    Properties:
-#      AutoPublishAlias: live
-#      CodeUri: ../../dist/linux_amd64/pipelineTrigger
-#      Runtime: go1.x
-#      Handler: pipelineTrigger
-#      Role: !GetAtt PipelineTriggerRole.Arn
-#      Environment:
-#        Variables:
-#          EVENTS_BUCKET_NAME: !ImportValue HyperdriveCore-EventsBucketName
-#  PipelineTriggerLogs:
-#    Type: AWS::Logs::LogGroup
-#    Properties:
-#      LogGroupName:
-#        Fn::Sub:
-#          - "/aws/lambda/${LambdaName}"
-#          - LambdaName: !Ref PipelineTriggerFunction
-#      RetentionInDays: 90
-#  PipelineTriggerPermission:
-#    Type: AWS::Lambda::Permission
-#    Properties:
-#      Action: lambda:InvokeFunction
-#      FunctionName: !GetAtt PipelineTriggerFunction.Arn
-#      Principal: codecommit.amazonaws.com
+  # Code commit function
+  PipelineTriggerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      AutoPublishAlias: live
+      CodeUri: ../../dist/linux_amd64/PipelineTrigger
+      Runtime: go1.x
+      Handler: pipelineTrigger
+      Policies:
+      - Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - "s3:PutObject"
+              - "s3:GetObject"
+              - "s3:GetObjectVersion"
+            Resource:
+              - Fn::Sub:
+                  - "${Bucket}/*"
+                  - Bucket: !ImportValue ForgeBuckets-EventsBucketArn
+      Environment:
+        Variables:
+          EVENTS_BUCKET_NAME: !ImportValue ForgeBuckets-EventsBucketName
+  PipelineTriggerPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt PipelineTriggerFunction.Arn
+      Principal: codecommit.amazonaws.com
 Outputs:
   #  CogCondPreAuth:
   #    Value: !GetAtt CogCondPreAuthFunction.Arn
@@ -761,62 +630,22 @@ Outputs:
     Value: !GetAtt CognitoUserPoolDomainFunction.Arn
     Export:
       Name: !Sub "${AWS::StackName}-CognitoUserPoolDomain"
-  #  CognitoIdentityProvider:
-  #    Value: !GetAtt CognitoIdentityProviderFunction.Arn
-  #    Export:
-  #      Name: !Sub "${AWS::StackName}-CognitoIdentityProvider"
-  #  CognitoIdentityProviderAlias:
-  #    Value: !Ref CognitoIdentityProviderFunction.Alias
-  #    Export:
-  #      Name: !Sub "${AWS::StackName}-CognitoIdentityProviderAlias"
-  #  CognitoIdentityProviderVersion:
-  #    Value: !Ref CognitoIdentityProviderFunction.Version
-  #    Export:
-  #      Name: !Sub "${AWS::StackName}-CognitoIdentityProviderVersion"
+  CognitoIdentityProvider:
+    Value: !GetAtt CognitoIdentityProviderFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-CognitoIdentityProvider"
   DnsCertificate:
     Value: !Ref DnsCertificateSNSTopic
     Export:
       Name: !Sub "${AWS::StackName}-DnsCertificate"
-  #  Dummy:
-  #    Value: !GetAtt DummyFunction.Arn
-  #    Export:
-  #      Name: !Sub "${AWS::StackName}-Dummy"
-  #  DummyAlias:
-  #    Value: !Ref DummyFunction.Alias
-  #    Export:
-  #      Name: !Sub "${AWS::StackName}-DummyAlias"
-  #  DummyVersion:
-  #    Value: !Ref DummyFunction.Version
-  #    Export:
-  #      Name: !Sub "${AWS::StackName}-DummyVersion"
-  #  EcrCleanup:
-  #    Value: !GetAtt EcrCleanupFunction.Arn
-  #    Export:
-  #      Name: !Sub "${AWS::StackName}-EcrCleanup"
-  #  EcrCleanupAlias:
-  #    Value: !Ref EcrCleanupFunction.Alias
-  #    Export:
-  #      Name: !Sub "${AWS::StackName}-EcrCleanupAlias"
-  #  EcrCleanupVersion:
-  #    Value: !Ref EcrCleanupFunction.Version
-  #    Export:
-  #      Name: !Sub "${AWS::StackName}-EcrCleanupVersion"
+  EcrCleanup:
+    Value: !GetAtt EcrCleanupFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-EcrCleanup"
   ListenerRuleSwapper:
     Value: !GetAtt ListenerRuleSwapperFunction.Arn
     Export:
       Name: !Sub "${AWS::StackName}-ListenerRuleSwapper"
-  #  LogGroup:
-  #    Value: !GetAtt LogGroupFunction.Arn
-  #    Export:
-  #      Name: !Sub "${AWS::StackName}-LogGroup"
-  #  LogGroupAlias:
-  #    Value: !Ref LogGroupFunction.Alias
-  #    Export:
-  #      Name: !Sub "${AWS::StackName}-LogGroupAlias"
-  #  LogGroupVersion:
-  #    Value: !Ref LogGroupFunction.Version
-  #    Export:
-  #      Name: !Sub "${AWS::StackName}-LogGroupVersion"
   S3Cleanup:
     Value: !GetAtt S3CleanupFunction.Arn
     Export:
@@ -841,19 +670,11 @@ Outputs:
 #    Value: !Ref RotateCfApiKeyFunction.Version
 #    Export:
 #      Name: !Sub "${AWS::StackName}-RotateCfApiKeyVersion"
-#  PipelineTrigger:
-#    Value: !GetAtt PipelineTriggerFunction.Arn
-#    Export:
-#      Name: !Sub "${AWS::StackName}-PipelineTrigger"
-#  PipelineTriggerAlias:
-#    Value: !Ref PipelineTriggerFunction.Alias
-#    Export:
-#      Name: !Sub "${AWS::StackName}-PipelineTriggerAlias"
-#  PipelineTriggerVersion:
-#    Value: !Ref PipelineTriggerFunction.Version
-#    Export:
-#      Name: !Sub "${AWS::StackName}-PipelineTriggerVersion"
-#  Version:
-#    Value: !Ref Version
-#    Export:
-#      Name: !Sub "${AWS::StackName}-Version"
+  PipelineTrigger:
+    Value: !GetAtt PipelineTriggerFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-PipelineTrigger"
+  Version:
+    Value: !Ref Version
+    Export:
+      Name: !Sub "${AWS::StackName}-Version"

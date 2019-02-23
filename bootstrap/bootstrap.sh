@@ -46,6 +46,7 @@ function deployForgeResources () {
     echo "# Deploying ForgeResources in the ${1} region"
     cd ${SCRIPT_DIR}/..
     S3_BUCKET=$(aws --region ${1} cloudformation describe-stacks --stack-name ForgeBuckets | jq -r '.Stacks[0].Outputs | map(select(.OutputKey=="ArtifactsBucketName"))[0].OutputValue')
+    SSM_KMS_KEY_ARN=$(aws --region ${1} kms describe-key --key-id alias/aws/ssm | jq -r ".KeyMetadata.Arn")
 
     aws --region ${1} cloudformation package \
         --template-file=${SCRIPT_DIR}/templates/ForgeResources.yaml \
@@ -60,7 +61,8 @@ function deployForgeResources () {
         --role-arn ${CLOUDFORMATION_ROLE_ARN} \
         --no-fail-on-empty-changeset \
         --parameter-overrides \
-            Version=${VERSION}
+            Version=${VERSION} \
+            SsmKmsKeyArn=${SSM_KMS_KEY_ARN}
     echo ""
 }
 

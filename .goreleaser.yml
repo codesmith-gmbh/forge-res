@@ -18,6 +18,10 @@ builds:
     binary: CogCondPreAuthSettings/cogCondPreAuthSettings
     goos: [linux]
     goarch: [amd64]
+  - main: aws/CloudFormation/CognitoIdentityProvider/cognitoIdentityProvider.go
+    binary: CognitoIdentityProvider/cognitoIdentityProvider
+    goos: [linux]
+    goarch: [amd64]
   - main: aws/CloudFormation/CognitoUserPoolClientSettings/cognitoUserPoolClientSettings.go
     binary: CognitoUserPoolClientSettings/cognitoUserPoolClientSettings
     goos: [linux]
@@ -28,6 +32,10 @@ builds:
     goarch: [amd64]
   - main: aws/CloudFormation/DnsCertificateCheck/dnsCertificateCheck.go
     binary: DnsCertificateCheck/dnsCertificateCheck
+    goos: [linux]
+    goarch: [amd64]
+  - main: aws/CloudFormation/EcrCleanup/ecrCleanup.go
+    binary: EcrCleanup/ecrCleanup
     goos: [linux]
     goarch: [amd64]
   - main: aws/CloudFormation/ListenerRuleSwapper/listenerRuleSwapper.go
@@ -48,6 +56,10 @@ builds:
     goarch: [amd64]
   - main: aws/CloudwatchLogs/LogsMaintenance/logsMaintenance.go
     binary: LogsMaintenance/logsMaintenance
+    goos: [linux]
+    goarch: [amd64]
+  - main: aws/CodeCommit/PipelineTrigger/pipelineTrigger.go
+    binary: PipelineTrigger/pipelineTrigger
     goos: [linux]
     goarch: [amd64]
 

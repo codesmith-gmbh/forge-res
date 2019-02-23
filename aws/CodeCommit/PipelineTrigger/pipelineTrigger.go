@@ -1,6 +1,6 @@
-// # pipelineTrigger
+// # PipelineTrigger
 //
-// The pipelineTrigger lambda function is used as trigger for code commit repository to trigger a CodePipeline pipeline.
+// The PipelineTrigger lambda function is used as trigger for code commit repository to trigger a CodePipeline pipeline.
 // The source of the pipeline must be a be found at the key `<pipeline-name>/trigger.zip` in an S3 bucket configured
 // via the environment variable `EVENTS_BUCKET_NAME`.
 //
@@ -14,11 +14,10 @@ import (
 	"fmt"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/aws/aws-sdk-go-v2/aws/external"
-	awss3 "github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/codesmith-gmbh/forge/aws/common"
 	"github.com/pkg/errors"
-	"go.uber.org/zap"
 	"os"
 	"strings"
 )
@@ -53,25 +52,24 @@ cd repo
 cd
 `
 
-var s3 *awss3.S3
-var log *zap.SugaredLogger
+var log = common.MustSugaredLogger()
 
 func main() {
-	logger, err := common.Logger()
-	if err != nil {
-		panic(err)
-	}
-	defer common.SyncLog(logger)
-	log = logger.Sugar()
-	cfg, err := external.LoadDefaultAWSConfig()
-	if err != nil {
-		log.Fatalw("could not get aws config", "err", err)
-	}
-	s3 = awss3.New(cfg)
-	lambda.Start(processEvent)
+	defer common.SyncSugaredLogger(log)
+	cfg := common.MustConfig()
+	p := newProc(cfg)
+	lambda.Start(p.processEvent)
 }
 
-func processEvent(event events.CodeCommitEvent) (events.CodeCommitEvent, error) {
+type proc struct {
+	s3 *s3.S3
+}
+
+func newProc(cfg aws.Config) *proc {
+	return &proc{s3: s3.New(cfg)}
+}
+
+func (p *proc) processEvent(event events.CodeCommitEvent) (events.CodeCommitEvent, error) {
 	log.Debugw("received CodeCommit event", "event", event)
 	commit := event.Records[0]
 	settings, err := settings(commit.CustomData)
@@ -89,11 +87,11 @@ func processEvent(event events.CodeCommitEvent) (events.CodeCommitEvent, error) 
 
 	switch {
 	case isCommit(ref) && settings.OnCommit:
-		if err := triggerPipeline(awsRegion, repository, settings.Pipeline, "git checkout "+ref.Commit); err != nil {
+		if err := p.triggerPipeline(awsRegion, repository, settings.Pipeline, "git checkout "+ref.Commit); err != nil {
 			return event, err
 		}
 	case isTag(ref) && settings.OnTag:
-		if err := triggerPipeline(awsRegion, repository, settings.Pipeline, "git checkout "+tag(ref)); err != nil {
+		if err := p.triggerPipeline(awsRegion, repository, settings.Pipeline, "git checkout "+tag(ref)); err != nil {
 			return event, err
 		}
 	default:
@@ -129,7 +127,7 @@ func tag(ref events.CodeCommitReference) string {
 	return ref.Ref[10:len(ref.Ref)]
 }
 
-func triggerPipeline(awsRegion, repository, pipeline, gitCheckoutCommand string) error {
+func (p *proc) triggerPipeline(awsRegion, repository, pipeline, gitCheckoutCommand string) error {
 	buf := new(bytes.Buffer)
 	writer := zip.NewWriter(buf)
 	var files = []struct {
@@ -154,7 +152,7 @@ func triggerPipeline(awsRegion, repository, pipeline, gitCheckoutCommand string)
 	}
 	bucket := os.Getenv(EventsBucketName)
 	key := pipeline + "/trigger.zip"
-	_, err = s3.PutObjectRequest(&awss3.PutObjectInput{
+	_, err = p.s3.PutObjectRequest(&s3.PutObjectInput{
 		Bucket: &bucket,
 		Key:    &key,
 		Body:   bytes.NewReader(buf.Bytes()),
