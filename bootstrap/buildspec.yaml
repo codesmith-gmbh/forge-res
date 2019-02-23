@@ -7,4 +7,4 @@ phases:
       - /usr/bin/dpkg -i /tmp/goreleaser_amd64.deb
   build:
     commands:
-      - bash bootstrap/bootstrap.sh
+      - ./bootstrap/bootstrap.sh main
