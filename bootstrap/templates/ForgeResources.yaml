@@ -212,6 +212,17 @@ Resources:
                 - "cloudformation:DescribeStackResource"
               Resource:
                 - "*"
+            - Effect: Allow
+              Sid: ssm
+              Action:
+                - "ssm:DeleteParameter"
+                - "ssm:DescribeParameters"
+                - "ssm:GetParametersByPath"
+                - "ssm:GetParameter"
+                - "ssm:GetParameters"
+                - "ssm:PutParameter"
+              Resource:
+                - "arn:aws:ssm:*:*:parameter/codesmith-forge/DnsCertificateSnsMessageId/*"
       ReservedConcurrentExecutions: 1
       Runtime: go1.x
       Timeout: 300
@@ -416,7 +427,7 @@ Resources:
                 - "ssm:GetParameters"
                 - "ssm:PutParameter"
               Resource:
-                - "arn:aws:ssm:*:*:parameter/forge/sequence/*"
+                - "arn:aws:ssm:*:*:parameter/codesmith-forge/Sequence/*"
       Runtime: go1.x
       Timeout: 300
   SequencePermission:
@@ -445,7 +456,7 @@ Resources:
                 - "ssm:GetParameters"
                 - "ssm:PutParameter"
               Resource:
-                - "arn:aws:ssm:*:*:parameter/forge/sequence/*"
+                - "arn:aws:ssm:*:*:parameter/codesmith-forge/Sequence/*"
       Runtime: go1.x
       Timeout: 300
   SequenceValuePermission:

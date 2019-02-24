@@ -226,6 +226,9 @@ func (p *proc) processEvent(event cfn.Event, snsMessageId string) error {
 
 func (p *subproc) createAndValidateCerificate(event cfn.Event, properties Properties, snsMessageId string) error {
 	skip, err := p.shouldSkipMessage(event, snsMessageId)
+	if err != nil {
+		return err
+	}
 	if skip {
 		return nil
 	}
@@ -243,6 +246,10 @@ func (p *subproc) createAndValidateCerificate(event cfn.Event, properties Proper
 // Important: the following code works only because the ReservedConcurrentExecutions of the the DnsCertificate lamdba
 // function it set to 1 and so all SNS events are serialized.
 func (p *subproc) shouldSkipMessage(event cfn.Event, snsMessageId string) (bool, error) {
+	log.Debugw("checking for sns message id",
+		"stackID", event.StackID,
+		"logicalResourceID", event.LogicalResourceID,
+		"snsMessageId", snsMessageId)
 	parameterName := common.DnsCertificeSnsMessageIdParameterName(event.StackID, event.LogicalResourceID)
 	param, err := p.ssm.GetParameterRequest(&ssm.GetParameterInput{
 		Name: &parameterName,
