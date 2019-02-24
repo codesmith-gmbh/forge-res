@@ -5,6 +5,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/acm"
 	"github.com/aws/aws-sdk-go-v2/service/route53"
+	"github.com/aws/aws-sdk-go-v2/service/ssm"
 	"github.com/codesmith-gmbh/forge/aws/testCommon"
 	"github.com/pkg/errors"
 	"strings"
@@ -125,7 +126,7 @@ func TestValidateProperties(t *testing.T) {
 			"HostedZoneName": "error.ch",
 		},
 		{
-			"DomainName":     "error.ch",
+			"DomainName":   "error.ch",
 			"HostedZoneId": "???",
 		},
 		{
@@ -161,6 +162,8 @@ func TestValidateProperties(t *testing.T) {
 	}
 
 }
+
+var messageIdParameterEvent = cfn.Event{StackID: "test", LogicalResourceID: "Certificate"}
 
 func TestIntegration(t *testing.T) {
 	if testing.Short() {
@@ -278,6 +281,47 @@ func (p *testProc) TestFaultyResourceDeletion(t *testing.T) {
 	}
 }
 
+func TestSnsMessageIdParameter(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
+	p := mustTestProc()
+	sp := p.mustSuproc()
+	defer sp.mustDeleteSnsMessageIdParameter(messageIdParameterEvent)
+	err := sp.deleteSnsMessageIdParameter(messageIdParameterEvent)
+	if err != nil {
+		t.Error(err, "delete should not fail on inexisting parameter")
+	}
+	skip, err := sp.shouldSkipMessage(messageIdParameterEvent, "1")
+	if err != nil {
+		t.Error(err)
+	}
+	if skip {
+		t.Error("should not skip for message 1")
+	}
+	skip, err = sp.shouldSkipMessage(messageIdParameterEvent, "1")
+	if err != nil {
+		t.Error(err)
+	}
+	if !skip {
+		t.Error("should skip for message 1")
+	}
+	skip, err = sp.shouldSkipMessage(messageIdParameterEvent, "2")
+	if err != nil {
+		t.Error(err)
+	}
+	if skip {
+		t.Error("should skip for message 2")
+	}
+}
+
+func (p *subproc) mustDeleteSnsMessageIdParameter(event cfn.Event) {
+	err := p.deleteSnsMessageIdParameter(messageIdParameterEvent)
+	if err != nil {
+		panic(err)
+	}
+}
+
 // Helper functions and predicates.
 
 func tag(key string, val string) acm.Tag {
@@ -296,7 +340,7 @@ func mustTestProc() *testProc {
 	acmService := func(_ Properties) (*acm.ACM, error) {
 		return cm, nil
 	}
-	return &testProc{proc: proc{r53: route53.New(cfg), acmService: acmService}, cfg: cfg}
+	return &testProc{proc: proc{r53: route53.New(cfg), acmService: acmService, ssm: ssm.New(cfg)}, cfg: cfg}
 }
 
 func (p *testProc) mustProperties(t *testing.T) Properties {
@@ -317,7 +361,7 @@ func (p *testProc) mustSuproc() *subproc {
 	if err != nil {
 		panic(err)
 	}
-	return &subproc{acm: cm, cf: p.cf, step: p.step, r53: p.r53}
+	return &subproc{acm: cm, cf: p.cf, step: p.step, ssm: p.ssm, r53: p.r53}
 }
 
 func ensureTestCertificateArn(sp *subproc, properties Properties) (string, error) {

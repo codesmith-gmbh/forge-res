@@ -212,6 +212,7 @@ Resources:
                 - "cloudformation:DescribeStackResource"
               Resource:
                 - "*"
+      ReservedConcurrentExecutions: 1
       Runtime: go1.x
       Timeout: 300
   DnsCertificateCheckFunction:

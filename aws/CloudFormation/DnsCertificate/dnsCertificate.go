@@ -7,11 +7,13 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-lambda-go/lambdacontext"
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/aws/awserr"
 	"github.com/aws/aws-sdk-go-v2/aws/external"
 	"github.com/aws/aws-sdk-go-v2/service/acm"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
 	"github.com/aws/aws-sdk-go-v2/service/route53"
 	"github.com/aws/aws-sdk-go-v2/service/sfn"
+	"github.com/aws/aws-sdk-go-v2/service/ssm"
 	"github.com/codesmith-gmbh/forge/aws/common"
 	"github.com/google/uuid"
 	"github.com/mitchellh/mapstructure"
@@ -39,6 +41,7 @@ func main() {
 		acmService: acmService,
 		cf:         cloudformation.New(cfg),
 		r53:        route53.New(cfg),
+		ssm:        ssm.New(cfg),
 		step:       sfn.New(cfg),
 	}
 	lambda.Start(p.processSNSEvent)
@@ -48,6 +51,7 @@ type proc struct {
 	acmService func(properties Properties) (*acm.ACM, error)
 	cf         *cloudformation.CloudFormation
 	r53        *route53.Route53
+	ssm        *ssm.SSM
 	step       *sfn.SFN
 }
 
@@ -55,6 +59,7 @@ type subproc struct {
 	acm  *acm.ACM
 	cf   *cloudformation.CloudFormation
 	r53  *route53.Route53
+	ssm  *ssm.SSM
 	step *sfn.SFN
 }
 
@@ -159,7 +164,7 @@ func (p *proc) processRecord(record events.SNSEventRecord) error {
 		return err
 	}
 
-	err = p.processEvent(event)
+	err = p.processEvent(event, record.SNS.MessageID)
 
 	if err != nil {
 		log.Infof("error processing the event, sending failure: %s", err)
@@ -190,7 +195,7 @@ func decodeEvent(input string) (cfn.Event, error) {
 	return event, nil
 }
 
-func (p *proc) processEvent(event cfn.Event) error {
+func (p *proc) processEvent(event cfn.Event, snsMessageId string) error {
 	properties, err := p.validateProperties(event.ResourceProperties)
 	if err != nil {
 		return err
@@ -199,18 +204,18 @@ func (p *proc) processEvent(event cfn.Event) error {
 	if err != nil {
 		return err
 	}
-	sp := &subproc{acm: cm, cf: p.cf, step: p.step, r53: p.r53}
+	sp := &subproc{acm: cm, cf: p.cf, step: p.step, ssm: p.ssm, r53: p.r53}
 	switch event.RequestType {
 	case cfn.RequestDelete:
 		return sp.deleteCertificate(event, properties)
 	case cfn.RequestCreate:
-		return sp.createAndValidateCerificate(event, properties)
+		return sp.createAndValidateCerificate(event, properties, snsMessageId)
 	case cfn.RequestUpdate:
 		oldProperties, err := p.validateProperties(event.OldResourceProperties)
 		if err != nil {
 			return err
 		}
-		return sp.updateCertificate(event, oldProperties, properties)
+		return sp.updateCertificate(event, oldProperties, properties, snsMessageId)
 	default:
 		_, _, err := common.UnknownRequestType(event)
 		return err
@@ -219,7 +224,11 @@ func (p *proc) processEvent(event cfn.Event) error {
 
 // Creation
 
-func (p *subproc) createAndValidateCerificate(event cfn.Event, properties Properties) error {
+func (p *subproc) createAndValidateCerificate(event cfn.Event, properties Properties, snsMessageId string) error {
+	skip, err := p.shouldSkipMessage(event, snsMessageId)
+	if skip {
+		return nil
+	}
 	certificateArn, err := p.createCertificateAndTags(properties)
 	if err != nil {
 		return err
@@ -229,6 +238,50 @@ func (p *subproc) createAndValidateCerificate(event cfn.Event, properties Proper
 		return err
 	}
 	return p.startWaitStateMachine(certificateArn, event)
+}
+
+// Important: the following code works only because the ReservedConcurrentExecutions of the the DnsCertificate lamdba
+// function it set to 1 and so all SNS events are serialized.
+func (p *subproc) shouldSkipMessage(event cfn.Event, snsMessageId string) (bool, error) {
+	parameterName := common.DnsCertificeSnsMessageIdParameterName(event.StackID, event.LogicalResourceID)
+	param, err := p.ssm.GetParameterRequest(&ssm.GetParameterInput{
+		Name: &parameterName,
+	}).Send()
+	if err != nil {
+		awsErr, ok := err.(awserr.RequestFailure)
+		if !ok || awsErr.StatusCode() != 400 || awsErr.Code() != "ParameterNotFound" {
+			return false, errors.Wrapf(err, "could not fetch the parameter %s", parameterName)
+		}
+	}
+	if param != nil && *param.Parameter.Value == snsMessageId {
+		log.Infow("already processed", "snsMessageId", snsMessageId)
+		return true, nil
+	}
+	overwrite := true
+	_, err = p.ssm.PutParameterRequest(&ssm.PutParameterInput{
+		Name:      &parameterName,
+		Value:     &snsMessageId,
+		Type:      ssm.ParameterTypeString,
+		Overwrite: &overwrite,
+	}).Send()
+	if err != nil {
+		return false, errors.Wrapf(err, "can put the parameter %s with the new message ID %s", parameterName, snsMessageId)
+	}
+	return false, nil
+}
+
+func (p *subproc) deleteSnsMessageIdParameter(event cfn.Event) error {
+	parameterName := common.DnsCertificeSnsMessageIdParameterName(event.StackID, event.LogicalResourceID)
+	_, err := p.ssm.DeleteParameterRequest(&ssm.DeleteParameterInput{
+		Name: &parameterName,
+	}).Send()
+	if err != nil {
+		awsErr, ok := err.(awserr.RequestFailure)
+		if !ok || awsErr.StatusCode() != 400 || awsErr.Code() != "ParameterNotFound" {
+			return errors.Wrapf(err, "could not delete the parameter %s", parameterName)
+		}
+	}
+	return nil
 }
 
 func (p *subproc) createCertificateAndTags(properties Properties) (string, error) {
@@ -291,7 +344,7 @@ func executionName() (string, error) {
 
 // Update
 
-func (p *subproc) updateCertificate(event cfn.Event, old Properties, new Properties) error {
+func (p *subproc) updateCertificate(event cfn.Event, old Properties, new Properties, snsMessageId string) error {
 	if needsNew(event, old, new) {
 		log.Infow("new certificate needed", "StackID", event.StackID, "LogicalResourceID", event.LogicalResourceID)
 		log.Debugw("delete old dns records preempively", "old", old)
@@ -300,7 +353,7 @@ func (p *subproc) updateCertificate(event cfn.Event, old Properties, new Propert
 			return err
 		}
 		log.Debugw("create new certificate", "new", new)
-		return p.createAndValidateCerificate(event, new)
+		return p.createAndValidateCerificate(event, new, snsMessageId)
 	}
 	if !tagsSame(old.Tags, new.Tags) {
 		err := p.updateTags(event, new)
@@ -429,6 +482,10 @@ func (p *subproc) deleteCertificate(event cfn.Event, properties Properties) erro
 		}
 		if !beingReplaced {
 			err = p.deleteRecordSetGroup(event.PhysicalResourceID, properties)
+			if err != nil {
+				return err
+			}
+			err = p.deleteSnsMessageIdParameter(event)
 			if err != nil {
 				return err
 			}

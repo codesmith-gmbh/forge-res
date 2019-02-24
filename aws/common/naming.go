@@ -7,6 +7,11 @@ package common
 // store.
 const SsmParameterPrefix = "/codesmith-forge"
 
+// Dns Certificate SNS Message memory
+func DnsCertificeSnsMessageIdParameterName(stackID string, logicalResourceID string) string {
+	return SsmParameterPrefix + "/DnsCertificateSnsMessageId/" + stackID + "/" + logicalResourceID
+}
+
 // Sequence naming
 func SequenceParameterName(sequenceName string) string {
 	return SsmParameterPrefix + "/Sequence" + sequenceName
