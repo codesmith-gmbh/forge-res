@@ -19,6 +19,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -246,11 +247,12 @@ func (p *subproc) createAndValidateCerificate(event cfn.Event, properties Proper
 // Important: the following code works only because the ReservedConcurrentExecutions of the the DnsCertificate lamdba
 // function it set to 1 and so all SNS events are serialized.
 func (p *subproc) shouldSkipMessage(event cfn.Event, snsMessageId string) (bool, error) {
+	stackId, err := extractStackId(event.StackID)
 	log.Debugw("checking for sns message id",
-		"stackID", event.StackID,
+		"stackID", stackId,
 		"logicalResourceID", event.LogicalResourceID,
 		"snsMessageId", snsMessageId)
-	parameterName := common.DnsCertificeSnsMessageIdParameterName(event.StackID, event.LogicalResourceID)
+	parameterName := common.DnsCertificeSnsMessageIdParameterName(stackId, event.LogicalResourceID)
 	param, err := p.ssm.GetParameterRequest(&ssm.GetParameterInput{
 		Name: &parameterName,
 	}).Send()
@@ -275,6 +277,16 @@ func (p *subproc) shouldSkipMessage(event cfn.Event, snsMessageId string) (bool,
 		return false, errors.Wrapf(err, "can put the parameter %s with the new message ID %s", parameterName, snsMessageId)
 	}
 	return false, nil
+}
+
+var stackArnRegExp = regexp.MustCompile("^arn:.*:cloudformation:.*:.*:stack/(.*)$")
+
+func extractStackId(stackArn string) (string, error) {
+	submatch := stackArnRegExp.FindStringSubmatch(stackArn)
+	if len(submatch) != 2 {
+		return "", errors.Errorf("Could not extract stackId from stack arn %s", stackArn)
+	}
+	return submatch[1], nil
 }
 
 func (p *subproc) deleteSnsMessageIdParameter(event cfn.Event) error {
