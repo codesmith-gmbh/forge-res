@@ -349,6 +349,27 @@ Resources:
       Action: lambda:InvokeFunction
       FunctionName: !GetAtt EcrCleanupFunction.Arn
       Principal: cloudformation.amazonaws.com
+  ForgeResourcesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      AutoPublishAlias: live
+      CodeUri: ../../dist/linux_amd64/ForgeResources
+      Handler: forgeResources
+      MemorySize: 512
+      Runtime: go1.x
+      Timeout: 300
+  ForgeResourcesPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt ForgeResourcesFunction.Arn
+      Principal: cloudformation.amazonaws.com
+  ForgeResourcesMacro:
+    Type: AWS::CloudFormation::Macro
+    Properties:
+      Description: A macro to produce a ApiGateway based http redirector
+      FunctionName: !GetAtt ForgeResourcesFunction.Arn
+      Name: ForgeResources
   ListenerRuleSwapperFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -474,17 +495,17 @@ Resources:
       Runtime: go1.x
       Handler: pipelineTrigger
       Policies:
-      - Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Action:
-              - "s3:PutObject"
-              - "s3:GetObject"
-              - "s3:GetObjectVersion"
-            Resource:
-              - Fn::Sub:
-                  - "${Bucket}/*"
-                  - Bucket: !ImportValue ForgeBuckets-EventsBucketArn
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - "s3:PutObject"
+                - "s3:GetObject"
+                - "s3:GetObjectVersion"
+              Resource:
+                - Fn::Sub:
+                    - "${Bucket}/*"
+                    - Bucket: !ImportValue ForgeBuckets-EventsBucketArn
       Environment:
         Variables:
           EVENTS_BUCKET_NAME: !ImportValue ForgeBuckets-EventsBucketName
