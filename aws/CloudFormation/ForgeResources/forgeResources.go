@@ -112,7 +112,9 @@ func apiGatewayRedirectorApiResource(name string, properties ApiGatewayRedirecto
 	res := make(map[string]interface{})
 	res["Type"] = "AWS::Serverless::Api"
 	res["Properties"] = map[string]interface{}{
-		"Name":      apiName,
+		"Name": map[string]interface{}{
+			"Fn::Sub": "${AWS::StackName}-" + apiName,
+		},
 		"StageName": stageName,
 		"DefinitionBody": map[string]interface{}{
 			"swagger": "2.0",
@@ -152,7 +154,7 @@ func apiGatewayRedirectorApiResource(name string, properties ApiGatewayRedirecto
 								"application/json": "{\"statusCode\": 301}",
 							},
 							"passthroughBehavior": "when_no_match",
-							"type": "mock",
+							"type":                "mock",
 						},
 					},
 				},
