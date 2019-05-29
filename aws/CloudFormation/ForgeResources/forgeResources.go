@@ -21,6 +21,7 @@ var (
 		"Forge::CertificateManager::DnsCertificate":          "ForgeResources-DnsCertificate",
 		"Forge::ECR::Cleanup":                                "ForgeResources-EcrCleanup",
 		"Forge::ElasticLoadBalancingV2::ListenerRuleSwapper": "ForgeResources-ListenerRuleSwapper",
+		"Forge::RDS::PostgresDatabase":                     "ForgeResources-PostgresDatabase",
 		"Forge::S3::Cleanup":                                 "ForgeResources-S3Cleanup",
 		"Forge::Utils::Sequence":                             "ForgeResources-Sequence",
 		"Forge::Utils::SequenceValue":                        "ForgeResources-SequenceValue",

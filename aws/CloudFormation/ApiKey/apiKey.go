@@ -106,10 +106,9 @@ func (p *proc) createApiKey(ctx context.Context, event cfn.Event, properties Pro
 		return "", nil, errors.Wrapf(err, "Cannot retrieve the stack name for %s", event.StackID)
 	}
 	name := *stack.Stacks[0].StackName + "-" + event.LogicalResourceID + "-" + properties.Ordinal
-	enabled := true
 	key, err := p.apg.CreateApiKeyRequest(&apigateway.CreateApiKeyInput{
-		Name:    &name,
-		Enabled: &enabled,
+		Name:    aws.String(name),
+		Enabled: aws.Bool(true),
 	}).Send(ctx)
 	if err != nil {
 		return "", nil, errors.Wrapf(err, "Cannot create the key with name %s", name)

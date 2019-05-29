@@ -111,7 +111,7 @@ function main () {
 
 function dev () {
     goArtefacts
-    deployForgeResources "us-east-1"
+    deployForgeResources "eu-west-1"
 }
 
 case $1 in
