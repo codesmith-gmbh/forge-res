@@ -57,15 +57,15 @@ func (p *proc) processEvent(ctx context.Context, event cfn.Event) (string, map[s
 	}
 	switch event.RequestType {
 	case cfn.RequestDelete:
-		return p.deleteParameter(event.PhysicalResourceID)
+		return p.deleteParameter(ctx, event.PhysicalResourceID)
 	case cfn.RequestCreate, cfn.RequestUpdate:
-		return p.putParameter(properties)
+		return p.putParameter(ctx, properties)
 	default:
 		return common.UnknownRequestType(event)
 	}
 }
 
-func (p *proc) putParameter(properties Properties) (string, map[string]interface{}, error) {
+func (p *proc) putParameter(ctx context.Context, properties Properties) (string, map[string]interface{}, error) {
 	overwrite := true
 	parameterName := common.CogCondPreAuthParameterName(properties.UserPoolId, properties.UserPoolClientId)
 	all, err := strconv.ParseBool(properties.All)
@@ -87,17 +87,17 @@ func (p *proc) putParameter(properties Properties) (string, map[string]interface
 		Name:      &parameterName,
 		Type:      ssm.ParameterTypeString,
 		Value:     &dataText,
-	}).Send()
+	}).Send(ctx)
 	if err != nil {
 		return "", nil, errors.Wrapf(err, "could not put the parameter %s", parameterName)
 	}
 	return parameterName, nil, nil
 }
 
-func (p *proc) deleteParameter(parameterName string) (string, map[string]interface{}, error) {
+func (p *proc) deleteParameter(ctx context.Context, parameterName string) (string, map[string]interface{}, error) {
 	_, err := p.ssm.DeleteParameterRequest(&ssm.DeleteParameterInput{
 		Name: &parameterName,
-	}).Send()
+	}).Send(ctx)
 	if err != nil {
 		awsErr, ok := err.(awserr.RequestFailure)
 		if !ok || awsErr.StatusCode() != 400 || awsErr.Code() != "ParameterNotFound" {

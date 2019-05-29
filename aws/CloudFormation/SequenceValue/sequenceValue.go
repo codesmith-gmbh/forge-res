@@ -40,7 +40,7 @@ func properties(input map[string]interface{}) (Properties, error) {
 	return properties, nil
 }
 
-func (p *proc) processEvent(_ context.Context, event cfn.Event) (string, map[string]interface{}, error) {
+func (p *proc) processEvent(ctx context.Context, event cfn.Event) (string, map[string]interface{}, error) {
 	properties, err := properties(event.ResourceProperties)
 	if err != nil {
 		return "", nil, err
@@ -49,21 +49,21 @@ func (p *proc) processEvent(_ context.Context, event cfn.Event) (string, map[str
 	case cfn.RequestDelete:
 		return event.PhysicalResourceID, nil, nil
 	case cfn.RequestCreate:
-		return p.nextValue(event, properties)
+		return p.nextValue(ctx, event, properties)
 	case cfn.RequestUpdate:
-		return p.nextValue(event, properties)
+		return p.nextValue(ctx, event, properties)
 	default:
 		return "", nil, errors.Errorf("unknown request type %s", event.RequestType)
 	}
 }
 
-func (p *proc) nextValue(event cfn.Event, properties Properties) (string, map[string]interface{}, error) {
+func (p *proc) nextValue(ctx context.Context, event cfn.Event, properties Properties) (string, map[string]interface{}, error) {
 	physicalId := physicalId(event, properties)
 	overwrite := true
 	pname := common.SequenceParameterName(properties.SequenceName)
 	param, err := p.ssm.GetParameterRequest(&awsssm.GetParameterInput{
 		Name: &pname,
-	}).Send()
+	}).Send(ctx)
 	if err != nil {
 		return physicalId, nil, errors.Wrapf(err, "unable to get the parameter %s", pname)
 	}
@@ -73,7 +73,7 @@ func (p *proc) nextValue(event cfn.Event, properties Properties) (string, map[st
 		Value:     &expression,
 		Type:      awsssm.ParameterTypeString,
 		Overwrite: &overwrite,
-	}).Send()
+	}).Send(ctx)
 	if err != nil {
 		return physicalId, nil, errors.Wrapf(err, "unable to put the parameter %s", pname)
 	}

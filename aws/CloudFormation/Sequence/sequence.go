@@ -46,7 +46,7 @@ func properties(input map[string]interface{}) (Properties, error) {
 	return properties, nil
 }
 
-func (p *proc) processEvent(_ context.Context, event cfn.Event) (string, map[string]interface{}, error) {
+func (p *proc) processEvent(ctx context.Context, event cfn.Event) (string, map[string]interface{}, error) {
 	properties, err := properties(event.ResourceProperties)
 	if err != nil {
 		return "", nil, err
@@ -56,22 +56,22 @@ func (p *proc) processEvent(_ context.Context, event cfn.Event) (string, map[str
 		if common.IsForgeSsmParameterARN(event.PhysicalResourceID) {
 			_, err := p.ssm.DeleteParameterRequest(&awsssm.DeleteParameterInput{
 				Name: &event.PhysicalResourceID,
-			}).Send()
+			}).Send(ctx)
 			if err != nil {
 				return event.PhysicalResourceID, nil, errors.Wrapf(err, "could not delete the Sequence %s", properties.SequenceName)
 			}
 		}
 		return event.PhysicalResourceID, nil, nil
 	case cfn.RequestCreate:
-		return p.putSequence(properties)
+		return p.putSequence(ctx, properties)
 	case cfn.RequestUpdate:
-		return p.putSequence(properties)
+		return p.putSequence(ctx, properties)
 	default:
 		return "", nil, errors.Errorf("unknown request type %s", event.RequestType)
 	}
 }
 
-func (p *proc) putSequence(properties Properties) (string, map[string]interface{}, error) {
+func (p *proc) putSequence(ctx context.Context, properties Properties) (string, map[string]interface{}, error) {
 	overwrite := true
 	parameterName := common.SequenceParameterName(properties.SequenceName)
 	_, err := p.ssm.PutParameterRequest(&awsssm.PutParameterInput{
@@ -79,7 +79,7 @@ func (p *proc) putSequence(properties Properties) (string, map[string]interface{
 		Type:      awsssm.ParameterTypeString,
 		Value:     &properties.Expression,
 		Overwrite: &overwrite,
-	}).Send()
+	}).Send(ctx)
 	if err != nil {
 		return "", nil, errors.Wrapf(err, "could not put the parameter %s", parameterName)
 	}

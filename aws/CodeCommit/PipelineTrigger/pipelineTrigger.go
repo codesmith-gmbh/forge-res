@@ -10,6 +10,7 @@ package main
 import (
 	"archive/zip"
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/aws/aws-lambda-go/events"
@@ -69,7 +70,7 @@ func newProc(cfg aws.Config) *proc {
 	return &proc{s3: s3.New(cfg)}
 }
 
-func (p *proc) processEvent(event events.CodeCommitEvent) (events.CodeCommitEvent, error) {
+func (p *proc) processEvent(ctx context.Context, event events.CodeCommitEvent) (events.CodeCommitEvent, error) {
 	log.Debugw("received CodeCommit event", "event", event)
 	commit := event.Records[0]
 	settings, err := settings(commit.CustomData)
@@ -87,11 +88,11 @@ func (p *proc) processEvent(event events.CodeCommitEvent) (events.CodeCommitEven
 
 	switch {
 	case isCommit(ref) && settings.OnCommit:
-		if err := p.triggerPipeline(awsRegion, repository, settings.Pipeline, "git checkout "+ref.Commit); err != nil {
+		if err := p.triggerPipeline(ctx, awsRegion, repository, settings.Pipeline, "git checkout "+ref.Commit); err != nil {
 			return event, err
 		}
 	case isTag(ref) && settings.OnTag:
-		if err := p.triggerPipeline(awsRegion, repository, settings.Pipeline, "git checkout "+tag(ref)); err != nil {
+		if err := p.triggerPipeline(ctx, awsRegion, repository, settings.Pipeline, "git checkout "+tag(ref)); err != nil {
 			return event, err
 		}
 	default:
@@ -127,7 +128,7 @@ func tag(ref events.CodeCommitReference) string {
 	return ref.Ref[10:len(ref.Ref)]
 }
 
-func (p *proc) triggerPipeline(awsRegion, repository, pipeline, gitCheckoutCommand string) error {
+func (p *proc) triggerPipeline(ctx context.Context, awsRegion, repository, pipeline, gitCheckoutCommand string) error {
 	buf := new(bytes.Buffer)
 	writer := zip.NewWriter(buf)
 	var files = []struct {
@@ -156,7 +157,7 @@ func (p *proc) triggerPipeline(awsRegion, repository, pipeline, gitCheckoutComma
 		Bucket: &bucket,
 		Key:    &key,
 		Body:   bytes.NewReader(buf.Bytes()),
-	}).Send()
+	}).Send(ctx)
 	if err != nil {
 		return errors.Wrapf(err, "could not put the object %s on the bucket %s", key, bucket)
 	}

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"github.com/aws/aws-lambda-go/cfn"
 	"github.com/aws/aws-lambda-go/events"
@@ -75,7 +76,7 @@ type Properties struct {
 	withCaaRecords bool `json:"-"`
 }
 
-func (p *proc) validateProperties(input map[string]interface{}) (Properties, error) {
+func (p *proc) validateProperties(ctx context.Context, input map[string]interface{}) (Properties, error) {
 	var properties Properties
 	if err := mapstructure.Decode(input, &properties); err != nil {
 		return properties, err
@@ -99,7 +100,7 @@ func (p *proc) validateProperties(input map[string]interface{}) (Properties, err
 	if properties.HostedZoneName != "" && properties.HostedZoneId != "" {
 		return properties, errors.Errorf("only of HostedZoneName or HostedZoneId may be defined: %+v", properties)
 	}
-	if err := p.fetchHostedZoneData(&properties); err != nil {
+	if err := p.fetchHostedZoneData(ctx, &properties); err != nil {
 		return properties, err
 	}
 	if err := checkIsDomainOf(properties.DomainName, properties.HostedZoneName); err != nil {
@@ -120,11 +121,11 @@ func checkIsDomainOf(domain, hostedZoneName string) error {
 	return errors.Errorf("%s is not a domain of %s", domain, hostedZoneName)
 }
 
-func (p *proc) fetchHostedZoneData(properties *Properties) error {
+func (p *proc) fetchHostedZoneData(ctx context.Context, properties *Properties) error {
 	if properties.HostedZoneName == "" {
 		hostedZone, err := p.r53.GetHostedZoneRequest(&route53.GetHostedZoneInput{
 			Id: &properties.HostedZoneId,
-		}).Send()
+		}).Send(ctx)
 		if err != nil {
 			return errors.Wrapf(err, "could not fetch hosted zone name for hosted zone id: %s", properties.HostedZoneId)
 		}
@@ -133,7 +134,7 @@ func (p *proc) fetchHostedZoneData(properties *Properties) error {
 	} else {
 		hostedZone, err := p.r53.ListHostedZonesByNameRequest(&route53.ListHostedZonesByNameInput{
 			DNSName: &properties.HostedZoneName,
-		}).Send()
+		}).Send(ctx)
 		if err != nil {
 			return errors.Wrapf(err, "could not fetch hosted zone id for hosted zone name: %s", properties.HostedZoneName)
 		}
@@ -148,9 +149,9 @@ func (p *proc) fetchHostedZoneData(properties *Properties) error {
 
 // Decode and process SNS event
 
-func (p *proc) processSNSEvent(event events.SNSEvent) error {
+func (p *proc) processSNSEvent(ctx context.Context, event events.SNSEvent) error {
 	for _, rec := range event.Records {
-		err := p.processRecord(rec)
+		err := p.processRecord(ctx, rec)
 		if err != nil {
 			return err
 		}
@@ -158,13 +159,13 @@ func (p *proc) processSNSEvent(event events.SNSEvent) error {
 	return nil
 }
 
-func (p *proc) processRecord(record events.SNSEventRecord) error {
+func (p *proc) processRecord(ctx context.Context, record events.SNSEventRecord) error {
 	event, err := decodeEvent(record.SNS.Message)
 	if err != nil {
 		return err
 	}
 
-	err = p.processEvent(event, record.SNS.MessageID)
+	err = p.processEvent(ctx, event, record.SNS.MessageID)
 
 	if err != nil {
 		log.Infof("error processing the event, sending failure: %s", err)
@@ -195,8 +196,8 @@ func decodeEvent(input string) (cfn.Event, error) {
 	return event, nil
 }
 
-func (p *proc) processEvent(event cfn.Event, snsMessageId string) error {
-	properties, err := p.validateProperties(event.ResourceProperties)
+func (p *proc) processEvent(ctx context.Context, event cfn.Event, snsMessageId string) error {
+	properties, err := p.validateProperties(ctx, event.ResourceProperties)
 	if err != nil {
 		return err
 	}
@@ -207,15 +208,15 @@ func (p *proc) processEvent(event cfn.Event, snsMessageId string) error {
 	sp := &subproc{acm: cm, cf: p.cf, step: p.step, ssm: p.ssm, r53: p.r53}
 	switch event.RequestType {
 	case cfn.RequestDelete:
-		return sp.deleteCertificate(event, properties)
+		return sp.deleteCertificate(ctx, event, properties)
 	case cfn.RequestCreate:
-		return sp.createAndValidateCerificate(event, properties, snsMessageId)
+		return sp.createAndValidateCerificate(ctx, event, properties, snsMessageId)
 	case cfn.RequestUpdate:
-		oldProperties, err := p.validateProperties(event.OldResourceProperties)
+		oldProperties, err := p.validateProperties(ctx, event.OldResourceProperties)
 		if err != nil {
 			return err
 		}
-		return sp.updateCertificate(event, oldProperties, properties, snsMessageId)
+		return sp.updateCertificate(ctx, event, oldProperties, properties, snsMessageId)
 	default:
 		_, _, err := common.UnknownRequestType(event)
 		return err
@@ -224,28 +225,28 @@ func (p *proc) processEvent(event cfn.Event, snsMessageId string) error {
 
 // Creation
 
-func (p *subproc) createAndValidateCerificate(event cfn.Event, properties Properties, snsMessageId string) error {
-	skip, err := p.shouldSkipMessage(event, snsMessageId)
+func (p *subproc) createAndValidateCerificate(ctx context.Context, event cfn.Event, properties Properties, snsMessageId string) error {
+	skip, err := p.shouldSkipMessage(ctx, event, snsMessageId)
 	if err != nil {
 		return err
 	}
 	if skip {
 		return nil
 	}
-	certificateArn, err := p.createCertificateAndTags(properties)
+	certificateArn, err := p.createCertificateAndTags(ctx, properties)
 	if err != nil {
 		return err
 	}
-	err = p.createRecordSetGroup(certificateArn, properties)
+	err = p.createRecordSetGroup(ctx, certificateArn, properties)
 	if err != nil {
 		return err
 	}
-	return p.startWaitStateMachine(certificateArn, event)
+	return p.startWaitStateMachine(ctx, certificateArn, event)
 }
 
 // Important: the following code works only because the ReservedConcurrentExecutions of the the DnsCertificate lamdba
 // function it set to 1 and so all SNS events are serialized.
-func (p *subproc) shouldSkipMessage(event cfn.Event, snsMessageId string) (bool, error) {
+func (p *subproc) shouldSkipMessage(ctx context.Context, event cfn.Event, snsMessageId string) (bool, error) {
 	log.Debugw("checking for sns message id",
 		"stackArn", event.StackID,
 		"logicalResourceID", event.LogicalResourceID,
@@ -256,7 +257,7 @@ func (p *subproc) shouldSkipMessage(event cfn.Event, snsMessageId string) (bool,
 	}
 	param, err := p.ssm.GetParameterRequest(&ssm.GetParameterInput{
 		Name: &parameterName,
-	}).Send()
+	}).Send(ctx)
 	if err != nil {
 		awsErr, ok := err.(awserr.RequestFailure)
 		if !ok || awsErr.StatusCode() != 400 || awsErr.Code() != "ParameterNotFound" {
@@ -273,21 +274,21 @@ func (p *subproc) shouldSkipMessage(event cfn.Event, snsMessageId string) (bool,
 		Value:     &snsMessageId,
 		Type:      ssm.ParameterTypeString,
 		Overwrite: &overwrite,
-	}).Send()
+	}).Send(ctx)
 	if err != nil {
 		return false, errors.Wrapf(err, "can put the parameter %s with the new message ID %s", parameterName, snsMessageId)
 	}
 	return false, nil
 }
 
-func (p *subproc) deleteSnsMessageIdParameter(event cfn.Event) error {
+func (p *subproc) deleteSnsMessageIdParameter(ctx context.Context, event cfn.Event) error {
 	parameterName, err := common.DnsCertificeSnsMessageIdParameterName(event.StackID, event.LogicalResourceID)
 	if err != nil {
 		return err
 	}
 	_, err = p.ssm.DeleteParameterRequest(&ssm.DeleteParameterInput{
 		Name: &parameterName,
-	}).Send()
+	}).Send(ctx)
 	if err != nil {
 		awsErr, ok := err.(awserr.RequestFailure)
 		if !ok || awsErr.StatusCode() != 400 || awsErr.Code() != "ParameterNotFound" {
@@ -297,7 +298,7 @@ func (p *subproc) deleteSnsMessageIdParameter(event cfn.Event) error {
 	return nil
 }
 
-func (p *subproc) createCertificateAndTags(properties Properties) (string, error) {
+func (p *subproc) createCertificateAndTags(ctx context.Context, properties Properties) (string, error) {
 	// 1. Create the certificate with certificate transparency logging enabled
 	res, err := p.acm.RequestCertificateRequest(&acm.RequestCertificateInput{
 		DomainName:       &properties.DomainName,
@@ -306,7 +307,7 @@ func (p *subproc) createCertificateAndTags(properties Properties) (string, error
 			CertificateTransparencyLoggingPreference: acm.CertificateTransparencyLoggingPreferenceEnabled,
 		},
 		SubjectAlternativeNames: properties.SubjectAlternativeNames,
-	}).Send()
+	}).Send(ctx)
 	if err != nil {
 		return "", errors.Wrap(err, "could not create the certificate")
 	}
@@ -316,7 +317,7 @@ func (p *subproc) createCertificateAndTags(properties Properties) (string, error
 		_, err = p.acm.AddTagsToCertificateRequest(&acm.AddTagsToCertificateInput{
 			CertificateArn: res.CertificateArn,
 			Tags:           properties.Tags,
-		}).Send()
+		}).Send(ctx)
 		if err != nil {
 			return *res.CertificateArn, errors.Wrapf(err, "could not add tags to certificate %s", *res.CertificateArn)
 		}
@@ -324,7 +325,7 @@ func (p *subproc) createCertificateAndTags(properties Properties) (string, error
 	return *res.CertificateArn, err
 }
 
-func (p *subproc) startWaitStateMachine(certificateArn string, event cfn.Event) error {
+func (p *subproc) startWaitStateMachine(ctx context.Context, certificateArn string, event cfn.Event) error {
 	event.ResourceProperties["CertificateArn"] = certificateArn
 	name, err := executionName()
 	if err != nil {
@@ -339,7 +340,7 @@ func (p *subproc) startWaitStateMachine(certificateArn string, event cfn.Event) 
 		Input:           &msg,
 		Name:            &name,
 		StateMachineArn: &stateMachineArn,
-	}).Send()
+	}).Send(ctx)
 	if err != nil {
 		return errors.Wrapf(err, "could not start the execution for the event %v", event)
 	}
@@ -357,19 +358,19 @@ func executionName() (string, error) {
 
 // Update
 
-func (p *subproc) updateCertificate(event cfn.Event, old Properties, new Properties, snsMessageId string) error {
+func (p *subproc) updateCertificate(ctx context.Context, event cfn.Event, old Properties, new Properties, snsMessageId string) error {
 	if needsNew(event, old, new) {
 		log.Infow("new certificate needed", "StackID", event.StackID, "LogicalResourceID", event.LogicalResourceID)
 		log.Debugw("delete old dns records preempively", "old", old)
-		err := p.deleteRecordSetGroup(event.PhysicalResourceID, old)
+		err := p.deleteRecordSetGroup(ctx, event.PhysicalResourceID, old)
 		if err != nil {
 			return err
 		}
 		log.Debugw("create new certificate", "new", new)
-		return p.createAndValidateCerificate(event, new, snsMessageId)
+		return p.createAndValidateCerificate(ctx, event, new, snsMessageId)
 	}
 	if !tagsSame(old.Tags, new.Tags) {
-		err := p.updateTags(event, new)
+		err := p.updateTags(ctx, event, new)
 		if err != nil {
 			return err
 		}
@@ -377,9 +378,9 @@ func (p *subproc) updateCertificate(event cfn.Event, old Properties, new Propert
 	if caaRecordsChanged(old, new) {
 		var err error
 		if new.withCaaRecords {
-			err = p.createCaaRecords(event.PhysicalResourceID, new)
+			err = p.createCaaRecords(ctx, event.PhysicalResourceID, new)
 		} else {
-			err = p.deleteCaaRecords(event.PhysicalResourceID, new)
+			err = p.deleteCaaRecords(ctx, event.PhysicalResourceID, new)
 		}
 		if err != nil {
 			return err
@@ -449,11 +450,11 @@ func caaRecordsChanged(old Properties, new Properties) bool {
 // Updating is quite straightforward: we delete all the tags before
 // recreating them. We must gather the CNAME records to send as attribute
 // to the response.
-func (p *subproc) updateTags(event cfn.Event, properties Properties) error {
+func (p *subproc) updateTags(ctx context.Context, event cfn.Event, properties Properties) error {
 	// 1. we first fetch the tags.
 	tags, err := p.acm.ListTagsForCertificateRequest(&acm.ListTagsForCertificateInput{
 		CertificateArn: &event.PhysicalResourceID,
-	}).Send()
+	}).Send(ctx)
 	if err != nil {
 		return errors.Wrapf(err, "could not list tags for certificate %s", event.PhysicalResourceID)
 	}
@@ -462,7 +463,7 @@ func (p *subproc) updateTags(event cfn.Event, properties Properties) error {
 		_, err = p.acm.RemoveTagsFromCertificateRequest(&acm.RemoveTagsFromCertificateInput{
 			CertificateArn: &event.PhysicalResourceID,
 			Tags:           tags.Tags,
-		}).Send()
+		}).Send(ctx)
 		if err != nil {
 			return errors.Wrapf(err, "could not remove tags for certificate %s", event.PhysicalResourceID)
 		}
@@ -472,7 +473,7 @@ func (p *subproc) updateTags(event cfn.Event, properties Properties) error {
 		_, err = p.acm.AddTagsToCertificateRequest(&acm.AddTagsToCertificateInput{
 			CertificateArn: &event.PhysicalResourceID,
 			Tags:           properties.Tags,
-		}).Send()
+		}).Send(ctx)
 		if err != nil {
 			return errors.Wrapf(err, "could not add tags for certificate %s", event.PhysicalResourceID)
 		}
@@ -486,26 +487,26 @@ func areDefined(tags []acm.Tag) bool {
 
 // Deletion
 
-func (p *subproc) deleteCertificate(event cfn.Event, properties Properties) error {
+func (p *subproc) deleteCertificate(ctx context.Context, event cfn.Event, properties Properties) error {
 	if common.IsCertificateArn(event.PhysicalResourceID) {
 		// we always delete the dns records before creating a new certificates if an update requires a replacement
-		beingReplaced, err := p.isBeingReplaced(event)
+		beingReplaced, err := p.isBeingReplaced(ctx, event)
 		if err != nil {
 			return err
 		}
 		if !beingReplaced {
-			err = p.deleteRecordSetGroup(event.PhysicalResourceID, properties)
+			err = p.deleteRecordSetGroup(ctx, event.PhysicalResourceID, properties)
 			if err != nil {
 				return err
 			}
-			err = p.deleteSnsMessageIdParameter(event)
+			err = p.deleteSnsMessageIdParameter(ctx, event)
 			if err != nil {
 				return err
 			}
 		}
 		_, err = p.acm.DeleteCertificateRequest(&acm.DeleteCertificateInput{
 			CertificateArn: &event.PhysicalResourceID,
-		}).Send()
+		}).Send(ctx)
 		if err != nil {
 			return errors.Wrapf(err, "could not delete the certificate %s", event.PhysicalResourceID)
 		}
@@ -515,11 +516,11 @@ func (p *subproc) deleteCertificate(event cfn.Event, properties Properties) erro
 
 // If the physical id of a resource being deleted is different from the physical id of the resource with the same
 // logical id in the stack, then we have a replacement; otherwise, we have a simple deletion.
-func (p *subproc) isBeingReplaced(event cfn.Event) (bool, error) {
+func (p *subproc) isBeingReplaced(ctx context.Context, event cfn.Event) (bool, error) {
 	res, err := p.cf.DescribeStackResourceRequest(&cloudformation.DescribeStackResourceInput{
 		StackName:         &event.StackID,
 		LogicalResourceId: &event.LogicalResourceID,
-	}).Send()
+	}).Send(ctx)
 	if err != nil {
 		return false, errors.Wrapf(err, "could not describe the resource %s on the stack %s", event.StackID, event.LogicalResourceID)
 	}
@@ -528,39 +529,39 @@ func (p *subproc) isBeingReplaced(event cfn.Event) (bool, error) {
 
 // DNS records
 
-func (p *subproc) createCaaRecords(certificateArn string, properties Properties) error {
-	changes, err := p.generateChanges(certificateArn, properties, CreateAction, caaSpec)
+func (p *subproc) createCaaRecords(ctx context.Context, certificateArn string, properties Properties) error {
+	changes, err := p.generateChanges(ctx, certificateArn, properties, CreateAction, caaSpec)
 	if err != nil {
 		return err
 	}
-	err = p.executeBatchChangeRequest(properties.HostedZoneId, changes)
+	err = p.executeBatchChangeRequest(ctx, properties.HostedZoneId, changes)
 	return err
 }
 
-func (p *subproc) deleteCaaRecords(certificateArn string, properties Properties) error {
-	changes, err := p.generateChanges(certificateArn, properties, DeleteAction, caaSpec)
+func (p *subproc) deleteCaaRecords(ctx context.Context, certificateArn string, properties Properties) error {
+	changes, err := p.generateChanges(ctx, certificateArn, properties, DeleteAction, caaSpec)
 	if err != nil {
 		return err
 	}
-	return p.deleteChanges(properties.HostedZoneId, changes)
+	return p.deleteChanges(ctx, properties.HostedZoneId, changes)
 }
 
-func (p *subproc) deleteRecordSetGroup(certificateArn string, properties Properties) error {
-	changes, err := p.generateChanges(certificateArn, properties, DeleteAction, validationSpec(properties))
+func (p *subproc) deleteRecordSetGroup(ctx context.Context, certificateArn string, properties Properties) error {
+	changes, err := p.generateChanges(ctx, certificateArn, properties, DeleteAction, validationSpec(properties))
 	if err != nil {
 		return err
 	}
-	return p.deleteChanges(properties.HostedZoneId, changes)
+	return p.deleteChanges(ctx, properties.HostedZoneId, changes)
 }
 
-func (p *subproc) deleteChanges(hostedZoneId string, changes []route53.Change) error {
+func (p *subproc) deleteChanges(ctx context.Context, hostedZoneId string, changes []route53.Change) error {
 	// we try first to delete batch by batch
-	err := p.executeBatchChangeRequest(hostedZoneId, changes)
+	err := p.executeBatchChangeRequest(ctx, hostedZoneId, changes)
 	if err != nil {
 		// if not possible, we delete record per record with tolerance if a record has been deleted manually
 		// already.
 		log.Debugw("could not delete the records in batch, deleting one by one", "err", err)
-		err = p.executeDeleteRequests(hostedZoneId, changes)
+		err = p.executeDeleteRequests(ctx, hostedZoneId, changes)
 	}
 	return err
 }
@@ -581,17 +582,17 @@ func validationSpec(properties Properties) generationSpec {
 	}
 }
 
-func (p *subproc) createRecordSetGroup(certificateArn string, properties Properties) error {
-	changes, err := p.generateChanges(certificateArn, properties, CreateAction, validationSpec(properties))
+func (p *subproc) createRecordSetGroup(ctx context.Context, certificateArn string, properties Properties) error {
+	changes, err := p.generateChanges(ctx, certificateArn, properties, CreateAction, validationSpec(properties))
 	if err != nil {
 		return err
 	}
 	log.Debugw("changes for creation", "changes", changes)
-	return p.executeBatchChangeRequest(properties.HostedZoneId, changes)
+	return p.executeBatchChangeRequest(ctx, properties.HostedZoneId, changes)
 }
 
-func (p *subproc) generateChanges(certificateArn string, properties Properties, changeAction route53.ChangeAction, spec generationSpec) ([]route53.Change, error) {
-	cert, err := p.describeCertificate(certificateArn, properties)
+func (p *subproc) generateChanges(ctx context.Context, certificateArn string, properties Properties, changeAction route53.ChangeAction, spec generationSpec) ([]route53.Change, error) {
+	cert, err := p.describeCertificate(ctx, certificateArn, properties)
 	if err != nil {
 		return nil, err
 	}
@@ -613,12 +614,12 @@ func (p *subproc) generateChanges(certificateArn string, properties Properties, 
 // since those are created by AWS asynchronously and added to the
 // certificate information only when they have been properly created. We
 // wait at most 3 minutes with 3 seconds interval.
-func (p *subproc) describeCertificate(certificateArn string, properties Properties) (*acm.CertificateDetail, error) {
+func (p *subproc) describeCertificate(ctx context.Context, certificateArn string, properties Properties) (*acm.CertificateDetail, error) {
 OUTER:
 	for i := 0; i < 60; i++ {
 		cert, err := p.acm.DescribeCertificateRequest(&acm.DescribeCertificateInput{
 			CertificateArn: &certificateArn,
-		}).Send()
+		}).Send(ctx)
 		if err != nil {
 			return nil, errors.Wrapf(err, "could not fetch certificate %s", certificateArn)
 		}
@@ -689,21 +690,21 @@ func caaChange(validation acm.DomainValidation, changeAction route53.ChangeActio
 
 var comment = "by Codesmith Forge DnsCertificateRecordSetGroup custom resource"
 
-func (p *subproc) executeBatchChangeRequest(hostedZoneId string, changes []route53.Change) error {
+func (p *subproc) executeBatchChangeRequest(ctx context.Context, hostedZoneId string, changes []route53.Change) error {
 	changeInfo, err := p.r53.ChangeResourceRecordSetsRequest(&route53.ChangeResourceRecordSetsInput{
 		ChangeBatch: &route53.ChangeBatch{
 			Changes: changes,
 			Comment: &comment,
 		},
 		HostedZoneId: &hostedZoneId,
-	}).Send()
+	}).Send(ctx)
 	if err != nil {
 		return errors.Wrap(err, "could not execute record set change batch")
 	}
-	return p.waitForChange(changeInfo.ChangeInfo)
+	return p.waitForChange(ctx, changeInfo.ChangeInfo)
 }
 
-func (p *subproc) executeDeleteRequests(hostedZoneId string, changes []route53.Change) error {
+func (p *subproc) executeDeleteRequests(ctx context.Context, hostedZoneId string, changes []route53.Change) error {
 	for _, change := range changes {
 		changeInfo, err := p.r53.ChangeResourceRecordSetsRequest(&route53.ChangeResourceRecordSetsInput{
 			ChangeBatch: &route53.ChangeBatch{
@@ -711,7 +712,7 @@ func (p *subproc) executeDeleteRequests(hostedZoneId string, changes []route53.C
 				Comment: &comment,
 			},
 			HostedZoneId: &hostedZoneId,
-		}).Send()
+		}).Send(ctx)
 		if err != nil {
 			msg := err.Error()
 			if strings.Contains(msg, "[Tried to delete resource record set") {
@@ -720,7 +721,7 @@ func (p *subproc) executeDeleteRequests(hostedZoneId string, changes []route53.C
 				return errors.Wrap(err, "could not execute delete record set change")
 			}
 		}
-		err = p.waitForChange(changeInfo.ChangeInfo)
+		err = p.waitForChange(ctx, changeInfo.ChangeInfo)
 		if err != nil {
 			return err
 		}
@@ -728,7 +729,7 @@ func (p *subproc) executeDeleteRequests(hostedZoneId string, changes []route53.C
 	return nil
 }
 
-func (p *subproc) waitForChange(changeInfo *route53.ChangeInfo) error {
+func (p *subproc) waitForChange(ctx context.Context, changeInfo *route53.ChangeInfo) error {
 	changeId := *changeInfo.Id
 	changeStatus := changeInfo.Status
 	for i := 0; i < 60; i++ {
@@ -738,7 +739,7 @@ func (p *subproc) waitForChange(changeInfo *route53.ChangeInfo) error {
 		time.Sleep(3 * time.Second)
 		res, err := p.r53.GetChangeRequest(&route53.GetChangeInput{
 			Id: &changeId,
-		}).Send()
+		}).Send(ctx)
 		if err != nil {
 			return errors.Wrapf(err, "could not fetch the change %s", changeId)
 		}

@@ -50,7 +50,7 @@ func ecrCleanupProperties(input map[string]interface{}) (Properties, error) {
 //    3. the stack is not being delete: it is a NOP as well.
 // 2. Create, Update: In that case, it is a NOP, the physical ID is simply
 //    the logical ID of the resource.
-func (p *proc) processEvent(_ context.Context, event cfn.Event) (string, map[string]interface{}, error) {
+func (p *proc) processEvent(ctx context.Context, event cfn.Event) (string, map[string]interface{}, error) {
 	properties, err := ecrCleanupProperties(event.ResourceProperties)
 	if err != nil {
 		return "", nil, err
@@ -60,13 +60,13 @@ func (p *proc) processEvent(_ context.Context, event cfn.Event) (string, map[str
 		if hasValidPhysicalResourceID(event, properties) {
 			stacks, err := p.cf.DescribeStacksRequest(&cloudformation.DescribeStacksInput{
 				StackName: &event.StackID,
-			}).Send()
+			}).Send(ctx)
 			if err != nil {
 				return event.PhysicalResourceID, nil, errors.Wrapf(err, "could not fetch the stack for the resource %s", event.PhysicalResourceID)
 			}
 			stackStatus := stacks.Stacks[0].StackStatus
 			if stackStatus == cloudformation.StackStatusDeleteInProgress {
-				if err = p.deleteImages(properties.Repository); err != nil {
+				if err = p.deleteImages(ctx, properties.Repository); err != nil {
 					return event.PhysicalResourceID, nil, errors.Wrapf(err, "could not delete the images of the repository %s", event.PhysicalResourceID)
 				}
 			}
@@ -82,10 +82,10 @@ func (p *proc) processEvent(_ context.Context, event cfn.Event) (string, map[str
 }
 
 // We delete all the images in batches.
-func (p *proc) deleteImages(repositoryName string) error {
+func (p *proc) deleteImages(ctx context.Context, repositoryName string) error {
 	images, err := p.ecr.ListImagesRequest(&awsecr.ListImagesInput{
 		RepositoryName: &repositoryName,
-	}).Send()
+	}).Send(ctx)
 	if err != nil {
 		return errors.Wrapf(err, "could not fetch images for the repository %s", repositoryName)
 	}
@@ -94,7 +94,7 @@ func (p *proc) deleteImages(repositoryName string) error {
 			_, err := p.ecr.BatchDeleteImageRequest(&awsecr.BatchDeleteImageInput{
 				ImageIds:       images.ImageIds,
 				RepositoryName: &repositoryName,
-			}).Send()
+			}).Send(ctx)
 			if err != nil {
 				return errors.Wrapf(err, "could not delete images from the repository %s", repositoryName)
 			}
@@ -105,7 +105,7 @@ func (p *proc) deleteImages(repositoryName string) error {
 		images, err = p.ecr.ListImagesRequest(&awsecr.ListImagesInput{
 			RepositoryName: &repositoryName,
 			NextToken:      images.NextToken,
-		}).Send()
+		}).Send(ctx)
 		if err != nil {
 			return errors.Wrapf(err, "could not fetch images for the repository %s", repositoryName)
 		}

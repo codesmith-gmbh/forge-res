@@ -9,7 +9,11 @@ a stack that uses an S3 bucket shared among many stacks).
 When the flag `ActiveOnlyOnStackDeletion` is true (default), the `s3Cleanup` custom resource only deletes objects
 when the stack itself is being deleted. It also safe to remove the resource from an existing stack.
 
-When the flag `ActiveOnlyOnStackDeletion` is false,
+When the flag `ActiveOnlyOnStackDeletion` is false, the the `s3Cleanup` custom resource deletes objects whenever it is
+itself deleted.
+
+Typical usage for `ActiveOnlyOnStackDeletion` on false are for bucket paths that are to store release dependent artifacts.
+When a new release is created, the `s3Cleanup` resource is replaced and the old artifacts are deleted during stack cleanup.
 
 ## Syntax
 

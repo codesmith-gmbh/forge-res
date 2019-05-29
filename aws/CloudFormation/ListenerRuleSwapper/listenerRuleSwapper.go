@@ -67,18 +67,18 @@ func (p *proc) processEvent(ctx context.Context, event cfn.Event) (string, map[s
 	}
 	switch event.RequestType {
 	case cfn.RequestDelete:
-		isBeingReplaced, err := p.isBeingReplaced(event)
+		isBeingReplaced, err := p.isBeingReplaced(ctx, event)
 		if err != nil {
 			return event.PhysicalResourceID, nil, nil
 		}
 		if isBeingReplaced {
-			return swapRules(event, properties)
+			return swapRules(ctx, event, properties)
 		}
 		return event.LogicalResourceID, nil, nil
 	case cfn.RequestCreate:
 		return event.LogicalResourceID, nil, nil
 	case cfn.RequestUpdate:
-		return swapRules(event, properties)
+		return swapRules(ctx, event, properties)
 	default:
 		return event.LogicalResourceID, nil, errors.Errorf("unknown request type %s", event.RequestType)
 	}
@@ -92,11 +92,14 @@ func rulePriority(rule elbv2.Rule) *int64 {
 	return &prio
 }
 
-func swapRules(event cfn.Event, prop Properties) (string, map[string]interface{}, error) {
+func swapRules(ctx context.Context, event cfn.Event, prop Properties) (string, map[string]interface{}, error) {
 	rules, err := elb.DescribeRulesRequest(&elbv2.DescribeRulesInput{
 		ListenerArn: &prop.ListenerArn,
 		RuleArns:    []string{prop.Rule1Arn, prop.Rule2Arn},
-	}).Send()
+	}).Send(ctx)
+	if err != nil {
+		return physicalResourceID(event, prop), nil, errors.Wrapf(err, "could not fetch the rules %s and %s on the listener %s", prop.Rule1Arn, prop.Rule2Arn, prop.ListenerArn)
+	}
 	var rule1Priority *int64
 	var rule2Priority *int64
 	for _, rule := range rules.Rules {
@@ -104,15 +107,12 @@ func swapRules(event cfn.Event, prop Properties) (string, map[string]interface{}
 			rule1Priority = rulePriority(rule)
 		}
 	}
-	if err != nil {
-		return physicalResourceID(event, prop), nil, errors.Wrapf(err, "could not fetch the rules %s and %s on the listener %s", prop.Rule1Arn, prop.Rule2Arn, prop.ListenerArn)
-	}
 	_, err = elb.SetRulePrioritiesRequest(&elbv2.SetRulePrioritiesInput{
 		RulePriorities: []elbv2.RulePriorityPair{
 			{RuleArn: &prop.Rule1Arn, Priority: rule2Priority},
 			{RuleArn: &prop.Rule2Arn, Priority: rule1Priority},
 		},
-	}).Send()
+	}).Send(ctx)
 	if err != nil {
 		return physicalResourceID(event, prop), nil, errors.Wrapf(err, "could not swap the rules %s and %s on the listener %s", prop.Rule1Arn, prop.Rule2Arn, prop.ListenerArn)
 	}
@@ -125,11 +125,11 @@ func physicalResourceID(event cfn.Event, properties Properties) string {
 
 // If the physical id of a resource being deleted is different from the physical id of the resource with the same
 // logical id in the stack, then we have a replacement; otherwise, we have a simple deletion.
-func (p *proc) isBeingReplaced(event cfn.Event) (bool, error) {
+func (p *proc) isBeingReplaced(ctx context.Context, event cfn.Event) (bool, error) {
 	res, err := p.cf.DescribeStackResourceRequest(&cloudformation.DescribeStackResourceInput{
 		StackName:         &event.StackID,
 		LogicalResourceId: &event.LogicalResourceID,
-	}).Send()
+	}).Send(ctx)
 	if err != nil {
 		return false, errors.Wrapf(err, "could not describe the resource %s on the stack %s", event.StackID, event.LogicalResourceID)
 	}

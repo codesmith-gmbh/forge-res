@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/aws/aws-lambda-go/events"
@@ -27,9 +28,9 @@ func main() {
 	lambda.Start(p.processEvent)
 }
 
-func (p *proc) processEvent(event events.CloudWatchEvent) error {
+func (p *proc) processEvent(ctx context.Context, event events.CloudWatchEvent) error {
 	log.Infow("maintenance", "event", event)
-	regions, err := p.ec2.DescribeRegionsRequest(&ec2.DescribeRegionsInput{}).Send()
+	regions, err := p.ec2.DescribeRegionsRequest(&ec2.DescribeRegionsInput{}).Send(ctx)
 	if err != nil {
 		return errors.Wrapf(err, "could not fetch the list of regions")
 	}
@@ -38,12 +39,12 @@ func (p *proc) processEvent(event events.CloudWatchEvent) error {
 	for _, region := range regions.Regions {
 		log.Infow("Region Maintenance", "region", region)
 		regionName := *region.RegionName
-		ps := p.checkLogGroupExpiration(regionName)
+		ps := p.checkLogGroupExpiration(ctx, regionName)
 		problemCount += len(ps)
 		problems[regionName] = ps
 	}
 	if problemCount > 0 {
-		if err := p.alert(problems, problemCount); err != nil {
+		if err := p.alert(ctx, problems, problemCount); err != nil {
 			return err
 		}
 	}
@@ -59,13 +60,13 @@ type problem struct {
 	LogGroupName, Error string
 }
 
-func (p *proc) checkLogGroupExpiration(region string) []problem {
+func (p *proc) checkLogGroupExpiration(ctx context.Context, region string) []problem {
 	problems := make([]problem, 0, 10)
 	cfg := common.MustConfig(external.WithRegion(region))
 	logs := cloudwatchlogs.New(cfg)
-	grps, err := logs.DescribeLogGroupsRequest(&cloudwatchlogs.DescribeLogGroupsInput{}).Send()
+	grps, err := logs.DescribeLogGroupsRequest(&cloudwatchlogs.DescribeLogGroupsInput{}).Send(ctx)
 	if err != nil {
-		problems = append(problems, problem{Error: err.Error()})
+		return append(problems, problem{Error: err.Error()})
 	}
 	for {
 		for _, grp := range grps.LogGroups {
@@ -77,7 +78,7 @@ func (p *proc) checkLogGroupExpiration(region string) []problem {
 				_, err := logs.PutRetentionPolicyRequest(&cloudwatchlogs.PutRetentionPolicyInput{
 					LogGroupName:    grp.LogGroupName,
 					RetentionInDays: &DefaultRetentionInDays,
-				}).Send()
+				}).Send(ctx)
 				if err != nil {
 					problems = append(problems, problem{LogGroupName: *grp.LogGroupName, Error: err.Error()})
 				}
@@ -89,15 +90,15 @@ func (p *proc) checkLogGroupExpiration(region string) []problem {
 		}
 		grps, err = logs.DescribeLogGroupsRequest(&cloudwatchlogs.DescribeLogGroupsInput{
 			NextToken: grps.NextToken,
-		}).Send()
+		}).Send(ctx)
 		if err != nil {
-			problems = append(problems, problem{Error: err.Error()})
+			return append(problems, problem{Error: err.Error()})
 		}
 	}
 	return problems
 }
 
-func (p *proc) alert(problems map[string][]problem, problemCount int) error {
+func (p *proc) alert(ctx context.Context, problems map[string][]problem, problemCount int) error {
 	log.Debugw("problems", "count", problemCount)
 	subject := fmt.Sprintf("CloudwatchLogs expiration checker and gc has %d problems", problemCount)
 	msg, err := json.Marshal(problems)
@@ -109,6 +110,6 @@ func (p *proc) alert(problems map[string][]problem, problemCount int) error {
 		Subject:  &subject,
 		Message:  &msgText,
 		TopicArn: &snsAlertTopicArn,
-	}).Send()
+	}).Send(ctx)
 	return err
 }

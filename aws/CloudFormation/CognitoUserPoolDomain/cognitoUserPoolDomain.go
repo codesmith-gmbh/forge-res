@@ -48,28 +48,28 @@ func (p *proc) processEvent(ctx context.Context, event cfn.Event) (string, map[s
 	}
 	switch event.RequestType {
 	case cfn.RequestDelete:
-		return p.deleteDomain(event, properties)
+		return p.deleteDomain(ctx, event, properties)
 	case cfn.RequestCreate, cfn.RequestUpdate:
-		return p.createDomain(event, properties)
+		return p.createDomain(ctx, event, properties)
 	default:
 		return common.UnknownRequestType(event)
 	}
 }
 
-func (p *proc) createDomain(event cfn.Event, properties Properties) (string, map[string]interface{}, error) {
+func (p *proc) createDomain(ctx context.Context, event cfn.Event, properties Properties) (string, map[string]interface{}, error) {
 	var out *cognitoidentityprovider.CreateUserPoolDomainOutput
 	var err error
 	if properties.CustomDomainConfig.CertificateArn == nil {
 		out, err = p.idp.CreateUserPoolDomainRequest(&cognitoidentityprovider.CreateUserPoolDomainInput{
 			Domain:     &properties.Domain,
 			UserPoolId: &properties.UserPoolId,
-		}).Send()
+		}).Send(ctx)
 	} else {
 		out, err = p.idp.CreateUserPoolDomainRequest(&cognitoidentityprovider.CreateUserPoolDomainInput{
 			Domain:             &properties.Domain,
 			UserPoolId:         &properties.UserPoolId,
 			CustomDomainConfig: &properties.CustomDomainConfig,
-		}).Send()
+		}).Send(ctx)
 	}
 	if err != nil {
 		return "", nil, errors.Wrap(err, "Could not create the CognitoUserPoolDomain")
@@ -92,11 +92,11 @@ func (p *proc) createDomain(event cfn.Event, properties Properties) (string, map
 		nil
 }
 
-func (p *proc) deleteDomain(event cfn.Event, properties Properties) (string, map[string]interface{}, error) {
+func (p *proc) deleteDomain(ctx context.Context, event cfn.Event, properties Properties) (string, map[string]interface{}, error) {
 	_, err := p.idp.DeleteUserPoolDomainRequest(&cognitoidentityprovider.DeleteUserPoolDomainInput{
 		Domain:     &event.PhysicalResourceID,
 		UserPoolId: &properties.UserPoolId,
-	}).Send()
+	}).Send(ctx)
 	if err != nil {
 		awsErr, ok := err.(awserr.RequestFailure)
 		if !ok || awsErr.StatusCode() != 400 || !strings.HasPrefix(awsErr.Message(), "No such domain or user pool exists") {

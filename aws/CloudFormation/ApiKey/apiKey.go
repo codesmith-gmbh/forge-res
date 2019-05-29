@@ -88,9 +88,9 @@ func (p *proc) processEvent(ctx context.Context, event cfn.Event) (string, map[s
 	}
 	switch event.RequestType {
 	case cfn.RequestDelete:
-		return p.deleteApiKey(event.PhysicalResourceID)
+		return p.deleteApiKey(ctx, event.PhysicalResourceID)
 	case cfn.RequestUpdate, cfn.RequestCreate:
-		return p.createApiKey(event, properties)
+		return p.createApiKey(ctx, event, properties)
 	default:
 		return event.PhysicalResourceID, nil, errors.Errorf("unknown request type %s", event.RequestType)
 	}
@@ -98,10 +98,10 @@ func (p *proc) processEvent(ctx context.Context, event cfn.Event) (string, map[s
 
 // To create the Api Key, we first retrieve the name of the stack and concatenate with the LogicalResourceId and Ordinal to create
 // The Api Key Name.
-func (p *proc) createApiKey(event cfn.Event, properties Properties) (string, map[string]interface{}, error) {
+func (p *proc) createApiKey(ctx context.Context, event cfn.Event, properties Properties) (string, map[string]interface{}, error) {
 	stack, err := p.cf.DescribeStacksRequest(&cloudformation.DescribeStacksInput{
 		StackName: &event.StackID,
-	}).Send()
+	}).Send(ctx)
 	if err != nil {
 		return "", nil, errors.Wrapf(err, "Cannot retrieve the stack name for %s", event.StackID)
 	}
@@ -110,17 +110,17 @@ func (p *proc) createApiKey(event cfn.Event, properties Properties) (string, map
 	key, err := p.apg.CreateApiKeyRequest(&apigateway.CreateApiKeyInput{
 		Name:    &name,
 		Enabled: &enabled,
-	}).Send()
+	}).Send(ctx)
 	if err != nil {
 		return "", nil, errors.Wrapf(err, "Cannot create the key with name %s", name)
 	}
 	return *key.Id, map[string]interface{}{"Secret": key.Value}, nil
 }
 
-func (p *proc) deleteApiKey(keyId string) (string, map[string]interface{}, error) {
+func (p *proc) deleteApiKey(ctx context.Context, keyId string) (string, map[string]interface{}, error) {
 	_, err := p.apg.DeleteApiKeyRequest(&apigateway.DeleteApiKeyInput{
 		ApiKey: &keyId,
-	}).Send()
+	}).Send(ctx)
 	if err != nil {
 		awsErr, ok := err.(awserr.RequestFailure)
 		if !ok || awsErr.StatusCode() != 404 {

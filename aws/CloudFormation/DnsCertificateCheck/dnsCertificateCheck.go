@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"github.com/aws/aws-lambda-go/cfn"
 	"github.com/aws/aws-lambda-go/lambda"
@@ -33,7 +34,7 @@ func decodeEvent(eventRaw map[string]interface{}) (cfn.Event, error) {
 	return event, err
 }
 
-func (p *proc) processEvent(eventRaw map[string]interface{}) (map[string]interface{}, error) {
+func (p *proc) processEvent(ctx context.Context, eventRaw map[string]interface{}) (map[string]interface{}, error) {
 	log.Debugw("event", "event", eventRaw)
 	event, err := decodeEvent(eventRaw)
 	if err != nil {
@@ -46,7 +47,7 @@ func (p *proc) processEvent(eventRaw map[string]interface{}) (map[string]interfa
 	} else {
 		round = 0
 	}
-	check, err := p.checkCertificate(event, round)
+	check, err := p.checkCertificate(ctx, event, round)
 	if err != nil {
 		return eventRaw, err
 	}
@@ -55,7 +56,7 @@ func (p *proc) processEvent(eventRaw map[string]interface{}) (map[string]interfa
 	return eventRaw, nil
 }
 
-func (p *proc) checkCertificate(event cfn.Event, round int) (bool, error) {
+func (p *proc) checkCertificate(ctx context.Context, event cfn.Event, round int) (bool, error) {
 	certificateArn, ok := event.ResourceProperties["CertificateArn"].(string)
 	if !ok {
 		return false, errors.Errorf("the event does not contain sufficient information, the certificate arn is missing")
@@ -82,7 +83,7 @@ func (p *proc) checkCertificate(event cfn.Event, round int) (bool, error) {
 	}
 	cert, err := cm.DescribeCertificateRequest(&acm.DescribeCertificateInput{
 		CertificateArn: &certificateArn,
-	}).Send()
+	}).Send(ctx)
 	if err != nil {
 		response.Status = cfn.StatusFailed
 		response.Reason = fmt.Sprintf("Could not describe for the certificate: %s", certificateArn)

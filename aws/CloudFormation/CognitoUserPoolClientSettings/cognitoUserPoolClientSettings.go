@@ -61,36 +61,36 @@ func newProc(cfg aws.Config) *proc {
 	return &proc{cog: cip.New(cfg)}
 }
 
-func (p *proc) processEvent(_ context.Context, event cfn.Event) (string, map[string]interface{}, error) {
+func (p *proc) processEvent(ctx context.Context, event cfn.Event) (string, map[string]interface{}, error) {
 	properties, err := validateProperties(event.ResourceProperties)
 	if err != nil {
 		return event.PhysicalResourceID, nil, err
 	}
 	switch event.RequestType {
 	case cfn.RequestDelete:
-		return p.deleteCognitoUserPoolClientSettings(event, properties)
+		return p.deleteCognitoUserPoolClientSettings(ctx, event, properties)
 	case cfn.RequestCreate, cfn.RequestUpdate:
-		return p.createCognitoUserPoolClientSettings(event, properties)
+		return p.createCognitoUserPoolClientSettings(ctx, event, properties)
 	default:
 		return event.PhysicalResourceID, nil, errors.Errorf("unknown request type %s", event.RequestType)
 	}
 }
 
-func (p *proc) createCognitoUserPoolClientSettings(event cfn.Event, properties Properties) (string, map[string]interface{}, error) {
-	if err := p.updateClient(properties); err != nil {
+func (p *proc) createCognitoUserPoolClientSettings(ctx context.Context, event cfn.Event, properties Properties) (string, map[string]interface{}, error) {
+	if err := p.updateClient(ctx, properties); err != nil {
 		return event.PhysicalResourceID, nil, err
 	}
 	return properties.UserPoolClientId, nil, nil
 }
 
-func (p *proc) deleteCognitoUserPoolClientSettings(event cfn.Event, properties Properties) (string, map[string]interface{}, error) {
+func (p *proc) deleteCognitoUserPoolClientSettings(ctx context.Context, event cfn.Event, properties Properties) (string, map[string]interface{}, error) {
 	properties.allowedOAuthFlowsUserPoolClient = false
 	properties.AllowedOAuthFlows = []cip.OAuthFlowType{}
 	properties.AllowedOAuthScopes = []string{}
 	properties.CallbackURLs = []string{}
 	properties.LogoutURLs = []string{}
 	properties.SupportedIdentityProviders = []string{}
-	err := p.updateClient(properties)
+	err := p.updateClient(ctx, properties)
 	if err != nil {
 		switch err := errors.Cause(err).(type) {
 		case awserr.RequestFailure:
@@ -103,7 +103,7 @@ func (p *proc) deleteCognitoUserPoolClientSettings(event cfn.Event, properties P
 	return event.PhysicalResourceID, nil, nil
 }
 
-func (p *proc) updateClient(properties Properties) error {
+func (p *proc) updateClient(ctx context.Context, properties Properties) error {
 	var defaultRedirectURI *string
 	if len(properties.CallbackURLs) > 0 {
 		defaultRedirectURI = &properties.CallbackURLs[0]
@@ -118,7 +118,7 @@ func (p *proc) updateClient(properties Properties) error {
 		LogoutURLs:                      properties.LogoutURLs,
 		SupportedIdentityProviders:      properties.SupportedIdentityProviders,
 		UserPoolId:                      &properties.UserPoolId,
-	}).Send()
+	}).Send(ctx)
 	if err != nil {
 		return errors.Wrapf(err, "could not update the user pool client %s", properties.UserPoolClientId)
 	}

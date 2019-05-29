@@ -58,12 +58,12 @@ func (p *proc) processEvent(ctx context.Context, event cfn.Event) (string, map[s
 	switch event.RequestType {
 	case cfn.RequestDelete:
 		if hasValidPhysicalResourceID(event, properties) {
-			shouldDelete, err := p.shouldDelete(event, properties)
+			shouldDelete, err := p.shouldDelete(ctx, event, properties)
 			if err != nil {
 				return event.PhysicalResourceID, nil, errors.Wrapf(err, "could not fetch the stack for the resource %s", event.PhysicalResourceID)
 			}
 			if shouldDelete {
-				if err = p.deleteObjects(properties); err != nil {
+				if err = p.deleteObjects(ctx, properties); err != nil {
 					return event.PhysicalResourceID, nil, errors.Wrapf(err, "could not delete the images of the repository %s", event.PhysicalResourceID)
 				}
 			}
@@ -78,13 +78,13 @@ func (p *proc) processEvent(ctx context.Context, event cfn.Event) (string, map[s
 	}
 }
 
-func (p *proc) shouldDelete(event cfn.Event, properties Properties) (bool, error) {
+func (p *proc) shouldDelete(ctx context.Context, event cfn.Event, properties Properties) (bool, error) {
 	if properties.ActiveOnlyOnStackDeletion == "false" {
 		return true, nil
 	}
 	stacks, err := p.cf.DescribeStacksRequest(&cloudformation.DescribeStacksInput{
 		StackName: &event.StackID,
-	}).Send()
+	}).Send(ctx)
 	if err != nil {
 		return false, errors.Wrapf(err, "could not fetch the stack for the resource %s", event.PhysicalResourceID)
 	}
@@ -92,11 +92,11 @@ func (p *proc) shouldDelete(event cfn.Event, properties Properties) (bool, error
 	return stackStatus == cloudformation.StackStatusDeleteInProgress, nil
 }
 
-func (p *proc) deleteObjects(properties Properties) error {
+func (p *proc) deleteObjects(ctx context.Context, properties Properties) error {
 	versions, err := p.s3.ListObjectVersionsRequest(&awss3.ListObjectVersionsInput{
 		Bucket: &properties.Bucket,
 		Prefix: &properties.Prefix,
-	}).Send()
+	}).Send(ctx)
 	if err != nil {
 		return errors.Wrapf(err, "could not fetch versions for the bucket %s", properties.Bucket)
 	}
@@ -118,7 +118,7 @@ func (p *proc) deleteObjects(properties Properties) error {
 					Objects: objects,
 					Quiet:   &quiet,
 				},
-			}).Send()
+			}).Send(ctx)
 			if err != nil {
 				return errors.Wrapf(err, "could not delete objects from the s3 bucket %s", properties.Bucket)
 			}
@@ -129,7 +129,7 @@ func (p *proc) deleteObjects(properties Properties) error {
 				Prefix:          &properties.Prefix,
 				KeyMarker:       versions.NextKeyMarker,
 				VersionIdMarker: versions.NextVersionIdMarker,
-			}).Send()
+			}).Send(ctx)
 			if err != nil {
 				return errors.Wrapf(err, "could not fetch versions for the bucket %s", properties.Bucket)
 			}

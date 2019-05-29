@@ -21,7 +21,7 @@ type Properties struct {
 	AttributeMapping                                                   map[string]string
 }
 
-func (p *proc) validateProperties(input map[string]interface{}) (Properties, map[string]string, error) {
+func (p *proc) validateProperties(ctx context.Context, input map[string]interface{}) (Properties, map[string]string, error) {
 	var properties Properties
 	if err := mapstructure.Decode(input, &properties); err != nil {
 		return properties, nil, err
@@ -40,11 +40,11 @@ func (p *proc) validateProperties(input map[string]interface{}) (Properties, map
 	default:
 		return properties, nil, errors.Errorf("unknown provider type %s", providerType)
 	}
-	clientId, err := p.readParameter(properties.ClientIdParameter)
+	clientId, err := p.readParameter(ctx, properties.ClientIdParameter)
 	if err != nil {
 		return properties, nil, err
 	}
-	clientSecret, err := p.readParameter(properties.ClientSecretParameter)
+	clientSecret, err := p.readParameter(ctx, properties.ClientSecretParameter)
 	if err != nil {
 		return properties, nil, err
 	}
@@ -68,43 +68,43 @@ func newProc(cfg aws.Config) *proc {
 	return &proc{idp: cognitoidentityprovider.New(cfg), ssm: ssm.New(cfg)}
 }
 
-func (p *proc) processEvent(_ context.Context, event cfn.Event) (string, map[string]interface{}, error) {
-	properties, providerDetails, err := p.validateProperties(event.ResourceProperties)
+func (p *proc) processEvent(ctx context.Context, event cfn.Event) (string, map[string]interface{}, error) {
+	properties, providerDetails, err := p.validateProperties(ctx, event.ResourceProperties)
 	if err != nil {
 		return "", nil, err
 	}
 	switch event.RequestType {
 	case cfn.RequestDelete:
-		return p.deleteIdentityProvider(event, properties)
+		return p.deleteIdentityProvider(ctx, event, properties)
 	case cfn.RequestUpdate:
-		return p.updateIdentityProvider(event, properties, providerDetails)
+		return p.updateIdentityProvider(ctx, event, properties, providerDetails)
 	case cfn.RequestCreate:
-		return p.createIdentityProvider(event, properties, providerDetails)
+		return p.createIdentityProvider(ctx, event, properties, providerDetails)
 	default:
 		return common.UnknownRequestType(event)
 	}
 }
 
-func (p *proc) readParameter(parameterName string) (string, error) {
+func (p *proc) readParameter(ctx context.Context, parameterName string) (string, error) {
 	decrypt := true
 	param, err := p.ssm.GetParameterRequest(&ssm.GetParameterInput{
 		Name:           &parameterName,
 		WithDecryption: &decrypt,
-	}).Send()
+	}).Send(ctx)
 	if err != nil {
 		return "", errors.Wrapf(err, "could not read parameter %s", parameterName)
 	}
 	return *param.Parameter.Value, err
 }
 
-func (p *proc) createIdentityProvider(event cfn.Event, properties Properties, providerDetails map[string]string) (string, map[string]interface{}, error) {
+func (p *proc) createIdentityProvider(ctx context.Context, event cfn.Event, properties Properties, providerDetails map[string]string) (string, map[string]interface{}, error) {
 	_, err := p.idp.CreateIdentityProviderRequest(&cognitoidentityprovider.CreateIdentityProviderInput{
 		UserPoolId:       &properties.UserPoolId,
 		ProviderName:     &properties.ProviderName,
 		ProviderType:     properties.ProviderType,
 		AttributeMapping: properties.AttributeMapping,
 		ProviderDetails:  providerDetails,
-	}).Send()
+	}).Send(ctx)
 	if err != nil {
 		return "", nil, err
 	}
@@ -116,29 +116,29 @@ func physicalResourceID(properties Properties) string {
 	return properties.UserPoolId + "/" + properties.ProviderName
 }
 
-func (p *proc) updateIdentityProvider(event cfn.Event, properties Properties, providerDetails map[string]string) (string, map[string]interface{}, error) {
+func (p *proc) updateIdentityProvider(ctx context.Context, event cfn.Event, properties Properties, providerDetails map[string]string) (string, map[string]interface{}, error) {
 	oldUserPoolId := event.OldResourceProperties["UserPoolId"].(string)
 	oldProviderName := event.OldResourceProperties["ProviderName"].(string)
 	if properties.UserPoolId != oldUserPoolId || properties.ProviderName != oldProviderName {
-		return p.createIdentityProvider(event, properties, providerDetails)
+		return p.createIdentityProvider(ctx, event, properties, providerDetails)
 	}
 	_, err := p.idp.UpdateIdentityProviderRequest(&cognitoidentityprovider.UpdateIdentityProviderInput{
 		UserPoolId:       &properties.UserPoolId,
 		ProviderName:     &properties.ProviderName,
 		AttributeMapping: properties.AttributeMapping,
 		ProviderDetails:  providerDetails,
-	}).Send()
+	}).Send(ctx)
 	if err != nil {
 		return event.PhysicalResourceID, event.ResourceProperties, errors.Wrapf(err, "could not update the identity provider %s for the user pool %s", properties.ProviderName, properties.UserPoolId)
 	}
 	return event.PhysicalResourceID, event.ResourceProperties, nil
 }
 
-func (p *proc) deleteIdentityProvider(event cfn.Event, properties Properties) (string, map[string]interface{}, error) {
+func (p *proc) deleteIdentityProvider(ctx context.Context, event cfn.Event, properties Properties) (string, map[string]interface{}, error) {
 	_, err := p.idp.DeleteIdentityProviderRequest(&cognitoidentityprovider.DeleteIdentityProviderInput{
 		UserPoolId:   &properties.UserPoolId,
 		ProviderName: &properties.ProviderName,
-	}).Send()
+	}).Send(ctx)
 	if err != nil {
 		awsErr, ok := err.(awserr.RequestFailure)
 		if !ok || awsErr.StatusCode() != 400 || awsErr.Code() != "ResourceNotFoundException" {

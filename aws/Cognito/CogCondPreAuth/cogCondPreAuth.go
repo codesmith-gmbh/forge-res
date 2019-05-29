@@ -10,6 +10,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
@@ -53,13 +54,13 @@ func newProc(cfg aws.Config) *proc {
 	return &proc{ssm: ssm.New(cfg)}
 }
 
-func (p *proc) processEvent(event CognitoEventUserPoolsPreAuth) (CognitoEventUserPoolsPreAuth, error) {
+func (p *proc) processEvent(ctx context.Context, event CognitoEventUserPoolsPreAuth) (CognitoEventUserPoolsPreAuth, error) {
 	log.Debugw("received pre auth event", "event", event)
 
 	// 1. we fetch the Settings for the given user pool
 	userPoolId := event.UserPoolID
 	clientId := event.CallerContext.ClientID
-	settings, err := p.fetchSettings(userPoolId, clientId)
+	settings, err := p.fetchSettings(ctx, userPoolId, clientId)
 	if err != nil {
 		return zero, err
 	}
@@ -82,13 +83,13 @@ func (p *proc) processEvent(event CognitoEventUserPoolsPreAuth) (CognitoEventUse
 	return event, nil
 }
 
-func (p *proc) fetchSettings(userPoolId, clientId string) (Settings, error) {
+func (p *proc) fetchSettings(ctx context.Context, userPoolId, clientId string) (Settings, error) {
 	var settings Settings
 	parameterName := "/codesmith-forge/CogCondPreAuth/" + userPoolId + "/" + clientId
 	log.Debugw("fetch settings", "parameterName", parameterName)
 	parameter, err := p.ssm.GetParameterRequest(&ssm.GetParameterInput{
 		Name: &parameterName,
-	}).Send()
+	}).Send(ctx)
 	if err != nil {
 		return settings, errors.Wrapf(err, "error fetching the parameter %s", parameterName)
 	}
