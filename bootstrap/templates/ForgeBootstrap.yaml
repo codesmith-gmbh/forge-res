@@ -1,0 +1,203 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Parameters:
+  ForgeDomainName:
+    Type: String
+Description: |
+  This template is used to bootstrap the codesmith forge on a given AWS account. It is always installed on the us-east-1
+  region. It installs a CodeBuild project, its associated IAM role and cloudwatch logs. Bootstrapping the forge requires
+  manually starting the job.
+Resources:
+  BootstrapCloudFormationRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: ForgeBootstrapCloudFormationRole
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service: cloudformation.amazonaws.com
+            Action:
+              - "sts:AssumeRole"
+      Policies:
+        - PolicyName: forge-bootstrap
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Sid: iam
+                Effect: Allow
+                Action:
+                  - "iam:*"
+                Resource:
+                  - "arn:aws:iam::*:policy/Forge*"
+                  - "arn:aws:iam::*:role/Forge*"
+                  - "arn:aws:iam::*:instance-profile/Forge*"
+              - Sid: s3
+                Effect: Allow
+                Action:
+                  - "s3:ListBucket"
+                  - "s3:CreateBucket"
+                  - "s3:DeleteBucket"
+                  - "s3:DeleteBucketPolicy"
+                  - "s3:GetBucketAcl"
+                  - "s3:GetBucketPolicy"
+                  - "s3:GetBucketTagging"
+                  - "s3:GetEncryptionConfiguration"
+                  - "s3:GetLifecycleConfiguration"
+                  - "s3:GetObject"
+                  - "s3:GetObjectVersion"
+                  - "s3:DeleteBucketPolicy"
+                  - "s3:PutBucketPolicy"
+                  - "s3:PutBucketTagging"
+                  - "s3:PutBucketVersioning"
+                  - "s3:PutEncryptionConfiguration"
+                  - "s3:PutLifecycleConfiguration"
+                Resource:
+                  - !Sub "arn:aws:s3:::*.forge.*.${ForgeDomainName}"
+                  - !Sub "arn:aws:s3:::*.forge.*.${ForgeDomainName}/*"
+              - Sid: cloudfront
+                Effect: Allow
+                Action:
+                  - "cloudfront:CreateCloudFrontOriginAccessIdentity"
+                  - "cloudfront:DeleteCloudFrontOriginAccessIdentity"
+                  - "cloudfront:GetCloudFrontOriginAccessIdentity"
+                  - "cloudfront:GetCloudFrontOriginAccessIdentityConfig"
+                  - "cloudtrail:*"
+                  - "lambda:*"
+                  - "sns:*"
+                  - "states:*"
+                  - "events:*"
+                Resource:
+                  - "*"
+              - Sid: cloudformation
+                Effect: Allow
+                Action:
+                  - "cloudformation:CreateChangeSet"
+                  - "cloudformation:CreateStack"
+                  - "cloudformation:DescribeChangeSet"
+                  - "cloudformation:DescribeStackEvents"
+                  - "cloudformation:DescribeStackInstance"
+                  - "cloudformation:DescribeStackResource"
+                  - "cloudformation:DescribeStackResources"
+                  - "cloudformation:DescribeStacks"
+                  - "cloudformation:ExecuteChangeSet"
+                  - "cloudformation:UpdateStack"
+                  - "cloudformation:GetTemplateSummary"
+                  - "cloudformation:ValidateTemplate"
+                Resource:
+                  - "arn:aws:cloudformation:*:*:stack/ForgeIam/*"
+                  - "arn:aws:cloudformation:*:*:stack/ForgeBuckets/*"
+                  - "arn:aws:cloudformation:*:*:stack/ForgeResources/*"
+                  - "arn:aws:cloudformation:*:aws:transform/Serverless-2016-10-31"
+  BootstrapCodeBuildRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: ForgeBootstrapCodeBuildRole
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service: codebuild.amazonaws.com
+            Action:
+              - "sts:AssumeRole"
+      Policies:
+        - PolicyName: forge-bootstrap
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Sid: logs
+                Effect: Allow
+                Action:
+                  - "logs:CreateLogGroup"
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                Resource:
+                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/ForgeBootstrap"
+                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/ForgeBootstrap:*"
+              - Sid: cloudformation1
+                Effect: Allow
+                Action:
+                  - "cloudformation:CreateChangeSet"
+                  - "cloudformation:CreateStack"
+                  - "cloudformation:DescribeChangeSet"
+                  - "cloudformation:DescribeStackEvents"
+                  - "cloudformation:DescribeStackInstance"
+                  - "cloudformation:DescribeStackResource"
+                  - "cloudformation:DescribeStackResources"
+                  - "cloudformation:DescribeStacks"
+                  - "cloudformation:ExecuteChangeSet"
+                  - "cloudformation:UpdateStack"
+                  - "cloudformation:GetTemplateSummary"
+                  - "cloudformation:ValidateTemplate"
+                Resource:
+                  - "arn:aws:cloudformation:*:*:stack/ForgeIam/*"
+                  - "arn:aws:cloudformation:*:*:stack/ForgeBuckets/*"
+                  - "arn:aws:cloudformation:*:*:stack/ForgeResources/*"
+                  - "arn:aws:cloudformation:*:*:stack/ForgeLogsMaintenance/*"
+                  - "arn:aws:cloudformation:*:aws:transform/Serverless-2016-10-31"
+              - Sid: cloudformation2
+                Effect: Allow
+                Action:
+                  - "cloudformation:DescribeStacks"
+                Resource:
+                  - "arn:aws:cloudformation:*:*:stack/Forge*"
+              - Sid: read
+                Effect: Allow
+                Action:
+                  - "cloudformation:GetTemplateSummary"
+                  - "kms:DescribeKey"
+                Resource:
+                  - "*"
+              - Sid: iam
+                Effect: Allow
+                Action:
+                  - "iam:PassRole"
+                Resource:
+                  - !GetAtt BootstrapCloudFormationRole.Arn
+              - Sid: s3
+                Effect: Allow
+                Action:
+                  - "s3:ListBucket"
+                  - "s3:PutObject"
+                  - "s3:GetObject"
+                  - "s3:GetObjectVersion"
+                Resource:
+                  - !Sub "arn:aws:s3:::*.forge.*.${ForgeDomainName}"
+                  - !Sub "arn:aws:s3:::*.forge.*.${ForgeDomainName}/*"
+  BootstrapCodeBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Artifacts:
+        Type: NO_ARTIFACTS
+      Description: |
+        The CodeBuild project to bootstrap the forge on a given AWS account.
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        EnvironmentVariables:
+          - Name: CGO_ENABLED
+            Value: "0"
+            Type: PLAINTEXT
+          - Name: GO111MODULE
+            Value: "on"
+            Type: PLAINTEXT
+        Image: "aws/codebuild/golang:1.11"
+        Type: LINUX_CONTAINER
+      Name: ForgeBootstrap
+      ServiceRole: !GetAtt BootstrapCodeBuildRole.Arn
+      Source:
+        BuildSpec: bootstrap/buildspec.yaml
+        GitCloneDepth: 1
+        Location: "https://github.com/codesmith-gmbh/forge.git"
+        ReportBuildStatus: false
+        Type: GITHUB
+      TimeoutInMinutes: 30
+Outputs:
+  BootstrapCloudFormationRoleArn:
+    Value: !GetAtt BootstrapCloudFormationRole.Arn
+    Export:
+      Name: !Sub ${AWS::StackName}-BootstrapCloudFormationRoleArn
+  ForgeDomainName:
+    Value: !Ref ForgeDomainName
+    Export:
+      Name: !Sub ${AWS::StackName}-ForgeDomainName

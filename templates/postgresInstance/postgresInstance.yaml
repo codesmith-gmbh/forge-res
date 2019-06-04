@@ -1,0 +1,156 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: [ForgeResources, AWS::Serverless-2016-10-31]
+Description: An instance of a Postgresql with external IP Access and force SSL connection.
+Parameters:
+  DBInstanceName:
+    Type: String
+  Version:
+    Type: String
+  VpcId:
+    Type: String
+  SubnetIds:
+    Type: CommaDelimitedList
+  ExternalAdminCIDR:
+    Type: String
+    Default: "83.150.41.83/32"
+Resources:
+  # 1. S3 Release Cleanup
+  S3ReleaseCleanup:
+    Type: Forge::S3::Cleanup
+    Properties:
+      ActiveOnlyOnStackDeletion: false
+      Bucket: !ImportValue ForgeBuckets-ArtifactsBucketName
+      Prefix: !Sub ".postgresInstance/${DBInstanceName}/${Version}"
+  # 2. Networking
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Sub "Security Group for the instance ${DBInstanceName}"
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - CidrIp: !Ref ExternalAdminCIDR
+          Description: ExternalAdminCIDR
+          IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+  SecurityGroupSelfReference:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref SecurityGroup
+      IpProtocol: -1
+      SourceSecurityGroupId: !Ref SecurityGroup
+  # 3. PostgresDatabase Cloudformation Resource
+  PostgresDatabaseFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      AutoPublishAlias: live
+      CodeUri: dist/linux_amd64/PostgresDatabase
+      Description: Cloudformation Custom Resource for PostgresDatabase
+      Environment:
+        Variables:
+          DB_INSTANCE_IDENTIFIER: !Ref DBInstanceName
+      Handler: postgresDatabase
+      MemorySize: 128
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Sid: rds
+              Effect: Allow
+              Action:
+                - "rds:CreateDBSnapshot"
+                - "rds:DescribeDBInstances"
+              Resource:
+                - "*"
+            - Sid: smg
+              Effect: Allow
+              Action:
+                - "secretsmanager:GetSecretValue"
+              Resource:
+                - !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:codesmith-forge--rds--*"
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+      Runtime: go1.x
+      Timeout: 300
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref SecurityGroup
+        SubnetIds: !Ref SubnetIds
+  PostgresDatabasePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt PostgresDatabaseFunction.Arn
+      Principal: cloudformation.amazonaws.com
+  # 4. Instance
+  ParameterGroup:
+    Type: AWS::RDS::DBParameterGroup
+    Properties:
+      Description: !Sub "Parameter Group for the instance ${DBInstanceName}"
+      Family: postgres11
+      Parameters:
+        rds.force_ssl: 1
+  SubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: !Sub "Subnet Group for the instance ${DBInstanceName}"
+      SubnetIds: !Ref SubnetIds
+  MasterUserPasswordSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      GenerateSecretString:
+        ExcludeCharacters: "/@\\\" "
+        SecretStringTemplate: '{"username": "forgeadmin"}'
+        GenerateStringKey: "password"
+        PasswordLength: 128
+      Name: !Sub "codesmith-forge--rds--${DBInstanceName}"
+  MasterUserPasswordSecretTarget:
+    Type: AWS::SecretsManager::SecretTargetAttachment
+    Properties:
+      SecretId: !Ref MasterUserPasswordSecret
+      TargetId: !Ref Instance
+      TargetType: "AWS::RDS::DBInstance"
+#  MasterUserPasswordSecretRotationSchedule:
+#    Type: AWS::SecretsManager::RotationSchedule
+#    Properties:
+#      RotationLambdaARN: ???
+#      RotationRules:
+#        AutomaticallyAfterDays: 90
+#      SecretId: !Ref MasterUserPasswordSecret
+  Instance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      AllocatedStorage: 20
+      AutoMinorVersionUpgrade: true
+      BackupRetentionPeriod: 7
+      CopyTagsToSnapshot: true
+      DBInstanceIdentifier: !Ref DBInstanceName
+      DBInstanceClass: db.t2.micro
+      DBParameterGroupName: !Ref ParameterGroup
+      DBSubnetGroupName: !Ref SubnetGroup
+      DeletionProtection: true
+      EnableCloudwatchLogsExports:
+        - postgresql
+      EnableIAMDatabaseAuthentication: true
+      EnablePerformanceInsights: false
+      Engine: postgres
+      EngineVersion: 11.2
+      MasterUsername: !Sub '{{resolve:secretsmanager:codesmith-forge--rds--${DBInstanceName}:SecretString:username}}'
+      MasterUserPassword: !Sub '{{resolve:secretsmanager:codesmith-forge--rds--${DBInstanceName}:SecretString:password}}'
+      MonitoringInterval: 0
+      MultiAZ: false
+      Port: 5432
+      PubliclyAccessible: true
+      StorageType: gp2
+      UseDefaultProcessorFeatures: true
+      VPCSecurityGroups:
+        - !Ref SecurityGroup
+    DependsOn:
+      - MasterUserPasswordSecret
+Outputs:
+  SecurityGroup:
+    Value: !Ref SecurityGroup
+    Export:
+      Name: !Sub "${AWS::StackName}-SecurityGroup"
+  PostgresDatabase:
+    Value: !GetAtt PostgresDatabaseFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-PostgresDatabase"

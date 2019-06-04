@@ -1,0 +1,11 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Test for DnsCertificateRecordSetGroup
+Resources:
+  Certificate:
+    Type: Custom::DnsCertificate
+    Properties:
+      ServiceToken: !ImportValue ForgeResources-DnsCertificate
+      HostedZoneName: codesmith.ch.
+      DomainName: test-forge.codesmith.ch
+      SubjectAlternativeNames:
+        - test-forge-san.codesmith.ch

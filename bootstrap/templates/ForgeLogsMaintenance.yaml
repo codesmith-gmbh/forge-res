@@ -1,0 +1,49 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: A weekly job to set the log groups to a default and gc empty log groups.
+Parameters:
+  Version:
+    Type: String
+Resources:
+  S3ReleaseCleanup:
+    Type: Custom::S3Cleanup
+    Properties:
+      ServiceToken: !ImportValue ForgeResources-S3Cleanup
+      ActiveOnlyOnStackDeletion: false
+      Bucket: !ImportValue ForgeBuckets-ArtifactsBucketName
+      Prefix: !Sub ".forgeLogChecker/${Version}"
+  AlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: LogsMaintenance
+  LogsMaintenanceFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      AutoPublishAlias: live
+      CodeUri: ../../dist/linux_amd64/LogsMaintenance
+      Environment:
+        Variables:
+          SNS_ALERT_TOPIC_ARN: !Ref AlertTopic
+      Events:
+        Job:
+          Type: Schedule
+          Properties:
+            Schedule: "rate(7 days)"
+      Handler: logsMaintenance
+      MemorySize: 1024
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Sid: logsEc2
+              Action:
+                - "logs:deleteLogGroup"
+                - "logs:deleteLogStream"
+                - "logs:deleteRetentionPolicy"
+                - "logs:describeLogGroups"
+                - "logs:putRetentionPolicy"
+                - "ec2:DescribeRegions"
+              Resource:
+                - "*"
+      Runtime: go1.x
+      Timeout: 900

@@ -1,0 +1,78 @@
+# .goreleaser.yml
+project_name: forge
+
+before:
+  hooks:
+    - go mod download
+
+builds:
+  - main: aws/CloudFormation/ApiKey/apiKey.go
+    binary: ApiKey/apiKey
+    goos: [linux]
+    goarch: [amd64]
+  - main: aws/CloudFormation/CogCondPreAuthSettings/cogCondPreAuthSettings.go
+    binary: CogCondPreAuthSettings/cogCondPreAuthSettings
+    goos: [linux]
+    goarch: [amd64]
+  - main: aws/CloudFormation/CognitoIdentityProvider/cognitoIdentityProvider.go
+    binary: CognitoIdentityProvider/cognitoIdentityProvider
+    goos: [linux]
+    goarch: [amd64]
+  - main: aws/CloudFormation/CognitoUserPoolClientSettings/cognitoUserPoolClientSettings.go
+    binary: CognitoUserPoolClientSettings/cognitoUserPoolClientSettings
+    goos: [linux]
+    goarch: [amd64]
+  - main: aws/CloudFormation/CognitoUserPoolDomain/cognitoUserPoolDomain.go
+    binary: CognitoUserPoolDomain/cognitoUserPoolDomain
+    goos: [linux]
+    goarch: [amd64]
+  - main: aws/CloudFormation/DnsCertificate/dnsCertificate.go
+    binary: DnsCertificate/dnsCertificate
+    goos: [linux]
+    goarch: [amd64]
+  - main: aws/CloudFormation/DnsCertificateCheck/dnsCertificateCheck.go
+    binary: DnsCertificateCheck/dnsCertificateCheck
+    goos: [linux]
+    goarch: [amd64]
+  - main: aws/CloudFormation/EcrCleanup/ecrCleanup.go
+    binary: EcrCleanup/ecrCleanup
+    goos: [linux]
+    goarch: [amd64]
+  - main: aws/CloudFormation/ForgeResources/forgeResources.go
+    binary: ForgeResources/forgeResources
+    goos: [linux]
+    goarch: [amd64]
+  - main: aws/CloudFormation/ListenerRuleSwapper/listenerRuleSwapper.go
+    binary: ListenerRuleSwapper/listenerRuleSwapper
+    goos: [linux]
+    goarch: [amd64]
+  - main: aws/CloudFormation/S3Cleanup/s3Cleanup.go
+    binary: S3Cleanup/s3Cleanup
+    goos: [linux]
+    goarch: [amd64]
+  - main: aws/CloudFormation/Sequence/sequence.go
+    binary: Sequence/sequence
+    goos: [linux]
+    goarch: [amd64]
+  - main: aws/CloudFormation/SequenceValue/sequenceValue.go
+    binary: SequenceValue/sequenceValue
+    goos: [linux]
+    goarch: [amd64]
+  - main: aws/CloudwatchLogs/LogsMaintenance/logsMaintenance.go
+    binary: LogsMaintenance/logsMaintenance
+    goos: [linux]
+    goarch: [amd64]
+  - main: aws/CodeCommit/PipelineTrigger/pipelineTrigger.go
+    binary: PipelineTrigger/pipelineTrigger
+    goos: [linux]
+    goarch: [amd64]
+  - main: aws/Cognito/CogCondPreAuth/cogCondPreAuth.go
+    binary: CogCondPreAuth/cogCondPreAuth
+    goos: [linux]
+    goarch: [amd64]
+
+archive:
+  format: binary
+
+release:
+  disable: true

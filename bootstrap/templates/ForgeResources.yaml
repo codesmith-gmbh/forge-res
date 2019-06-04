@@ -1,0 +1,587 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Forge Cloudformation Resources
+Parameters:
+  Version:
+    Type: String
+  SsmKmsKeyArn:
+    Type: String
+Resources:
+  # 1. S3 Release Cleanup
+  S3ReleaseCleanup:
+    Type: Custom::S3Cleanup
+    Properties:
+      ServiceToken: !GetAtt S3CleanupFunction.Arn
+      ActiveOnlyOnStackDeletion: false
+      Bucket: !ImportValue ForgeBuckets-ArtifactsBucketName
+      Prefix: !Sub ".forgeResources/${Version}"
+  # 2. Cloudformation
+  ApiKeyFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      AutoPublishAlias: live
+      CodeUri: ../../dist/linux_amd64/ApiKey
+      Description: Cloudformation Custom Resource for apg api keys for Cloudfront.
+      Handler: apiKey
+      MemorySize: 128
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Sid: apikey
+              Action:
+                - "apigateway:*"
+              Resource:
+                - !Sub "arn:aws:apigateway:${AWS::Region}::/apikeys"
+                - !Sub "arn:aws:apigateway:${AWS::Region}::/apikeys/*"
+            - Effect: Allow
+              Sid: cloudformation
+              Action:
+                - "cloudformation:DescribeStacks"
+              Resource:
+                - "*"
+      Runtime: go1.x
+      Timeout: 300
+  ApiKeyPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt ApiKeyFunction.Arn
+      Principal: cloudformation.amazonaws.com
+  CogCondPreAuthSettingsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      AutoPublishAlias: live
+      CodeUri: ../../dist/linux_amd64/CogCondPreAuthSettings
+      Description: Cloudformation Custom Resource for CogCondPreAuthSettings
+      Handler: cogCondPreAuthSettings
+      MemorySize: 128
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Sid: ssm
+              Action:
+                - "ssm:DeleteParameter"
+                - "ssm:DescribeParameters"
+                - "ssm:GetParametersByPath"
+                - "ssm:GetParameter"
+                - "ssm:GetParameters"
+                - "ssm:PutParameter"
+              Resource:
+                - "arn:aws:ssm:*:*:parameter/codesmith-forge/CogCondPreAuth/*"
+      Runtime: go1.x
+      Timeout: 300
+  CogCondPreAuthSettingsPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt CogCondPreAuthSettingsFunction.Arn
+      Principal: cloudformation.amazonaws.com
+  CognitoUserPoolClientSettingsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      AutoPublishAlias: live
+      CodeUri: ../../dist/linux_amd64/CognitoUserPoolClientSettings
+      Description: Cloudformation Custom Resource for configuring a Cognito User Pool Client.
+      Handler: cognitoUserPoolClientSettings
+      MemorySize: 128
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - "cognito-idp:UpdateUserPoolClient"
+              Resource:
+                - "*"
+      Runtime: go1.x
+      Timeout: 300
+  CognitoUserPoolClientSettingsPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt CognitoUserPoolClientSettingsFunction.Arn
+      Principal: cloudformation.amazonaws.com
+  CognitoUserPoolDomainFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      AutoPublishAlias: live
+      CodeUri: ../../dist/linux_amd64/CognitoUserPoolDomain
+      Description: Cloudformation Custom Resource for Cognito User Pool Domain
+      Handler: cognitoUserPoolDomain
+      MemorySize: 128
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - "cognito-idp:CreateUserPoolDomain"
+                - "cognito-idp:DeleteUserPoolDomain"
+                - "cloudfront:UpdateDistribution"
+              Resource:
+                - "*"
+      Runtime: go1.x
+      Timeout: 300
+  CognitoUserPoolDomainPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt CognitoUserPoolDomainFunction.Arn
+      Principal: cloudformation.amazonaws.com
+  CognitoIdentityProviderFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      AutoPublishAlias: live
+      CodeUri: ../../dist/linux_amd64/CognitoIdentityProvider
+      Description: Cloudformation Custom Resource for cognito user pool idendity provider
+      Handler: cognitoIdentityProvider
+      MemorySize: 128
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - "cognito-idp:CreateIdentityProvider"
+                - "cognito-idp:DeleteIdentityProvider"
+                - "cognito-idp:UpdateIdentityProvider"
+              Resource:
+                - "*"
+            - Effect: Allow
+              Action:
+                - ssm:GetParameter
+              Resource: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/codesmith-forge/CognitoIdentityProvider/*"
+            - Effect: Allow
+              Action:
+                - kms:Decrypt
+              Resource:
+                - !Ref SsmKmsKeyArn
+      Runtime: go1.x
+      Timeout: 300
+  CognitoIdentityProviderPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt CognitoIdentityProviderFunction.Arn
+      Principal: cloudformation.amazonaws.com
+  DnsCertificateSNSTopic:
+    Type: AWS::SNS::Topic
+  DnsCertificateFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      AutoPublishAlias: live
+      CodeUri: ../../dist/linux_amd64/DnsCertificate
+      Description: Cloudformation Custom Resource for SSL Certificates validated via DNS.
+      Environment:
+        Variables:
+          STATE_MACHINE_ARN: !Ref DnsCertificateWaitStateMachine
+      Events:
+        Trigger:
+          Type: SNS
+          Properties:
+            Topic: !Ref DnsCertificateSNSTopic
+      Handler: dnsCertificate
+      MemorySize: 128
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Sid: acm
+              Effect: Allow
+              Action:
+                - "acm:*"
+              Resource:
+                - "*"
+            - Sid: route53
+              Effect: Allow
+              Action:
+                - "route53:GetHostedZone"
+                - "route53:ListHostedZones"
+                - "route53:ListHostedZonesByName"
+                - "route53:ChangeResourceRecordSets"
+                - "route53:GetChange"
+              Resource:
+                - "*"
+            - Sid: states
+              Effect: Allow
+              Action:
+                - "states:startExecution"
+              Resource:
+                - !Ref DnsCertificateWaitStateMachine
+            - Sid: cloudformation
+              Effect: Allow
+              Action:
+                - "cloudformation:DescribeStackResource"
+              Resource:
+                - "*"
+            - Effect: Allow
+              Sid: ssm
+              Action:
+                - "ssm:DeleteParameter"
+                - "ssm:DescribeParameters"
+                - "ssm:GetParametersByPath"
+                - "ssm:GetParameter"
+                - "ssm:GetParameters"
+                - "ssm:PutParameter"
+              Resource:
+                - "arn:aws:ssm:*:*:parameter/codesmith-forge/DnsCertificateSnsMessageId/*"
+      ReservedConcurrentExecutions: 1
+      Runtime: go1.x
+      Timeout: 300
+  DnsCertificateCheckFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      AutoPublishAlias: live
+      CodeUri: ../../dist/linux_amd64/DnsCertificateCheck
+      Description: Function to check a certificate inside a step functions state machine
+      Handler: dnsCertificateCheck
+      MemorySize: 128
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Sid: acm
+              Effect: Allow
+              Action:
+                - "acm:DescribeCertificate"
+                - "acm:GetCertificate"
+                - "acm:ListCertificates"
+                - "acm:ListTagsForCertificate"
+              Resource:
+                - "*"
+      Runtime: go1.x
+      Timeout: 300
+  DnsCertificateWaitStateMachineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - !Sub states.${AWS::Region}.amazonaws.com
+            Action: "sts:AssumeRole"
+      Policies:
+        - PolicyName: lambda
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "lambda:InvokeFunction"
+                Resource:
+                  - !GetAtt DnsCertificateCheckFunction.Arn
+  DnsCertificateWaitStateMachine:
+    Type: AWS::StepFunctions::StateMachine
+    Properties:
+      DefinitionString:
+        Fn::Sub:
+          - |
+            {
+              "StartAt": "Check",
+              "States": {
+                "Check": {
+                  "Type": "Task",
+                  "Resource": "${CheckArn}",
+                  "Next": "Switch"
+                },
+                "Switch": {
+                  "Type": "Choice",
+                  "Choices": [
+                    {
+                      "Variable": "$.IsCertificateIssued",
+                      "BooleanEquals": true,
+                      "Next": "Finish"
+                    },
+                    {
+                      "Variable": "$.IsCertificateIssued",
+                      "BooleanEquals": false,
+                      "Next": "Wait"
+                    }
+                  ]
+                },
+                "Wait": {
+                  "Type": "Wait",
+                  "Seconds": 60,
+                  "Next": "Check"
+                },
+                "Finish": {
+                  "Type": "Succeed"
+                }
+              }
+            }
+          - CheckArn: !GetAtt DnsCertificateCheckFunction.Arn
+      RoleArn: !GetAtt DnsCertificateWaitStateMachineRole.Arn
+  EcrCleanupFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      AutoPublishAlias: live
+      CodeUri: ../../dist/linux_amd64/EcrCleanup
+      Description: Cloudformation Custom Resource for ECR Cleaning
+      Handler: ecrCleanup
+      MemorySize: 128
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - "ecr:*"
+                - "cloudformation:DescribeStacks"
+              Resource:
+                - "*"
+      Runtime: go1.x
+      Timeout: 300
+  EcrCleanupPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt EcrCleanupFunction.Arn
+      Principal: cloudformation.amazonaws.com
+  ForgeResourcesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      AutoPublishAlias: live
+      CodeUri: ../../dist/linux_amd64/ForgeResources
+      Handler: forgeResources
+      MemorySize: 512
+      Runtime: go1.x
+      Timeout: 300
+  ForgeResourcesPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt ForgeResourcesFunction.Arn
+      Principal: cloudformation.amazonaws.com
+  ForgeResourcesMacro:
+    Type: AWS::CloudFormation::Macro
+    Properties:
+      Description: A macro to produce a ApiGateway based http redirector
+      FunctionName: !GetAtt ForgeResourcesFunction.Arn
+      Name: ForgeResources
+  ListenerRuleSwapperFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      AutoPublishAlias: live
+      CodeUri: ../../dist/linux_amd64/ListenerRuleSwapper
+      Description: Cloudformation Custom Resource to swap 2 rules during the update of a stack.
+      Handler: listenerRuleSwapper
+      MemorySize: 128
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Sid: elb
+              Effect: Allow
+              Action:
+                - "elasticloadbalancing:DescribeRules"
+                - "elasticloadbalancing:ModifyRule"
+              Resource:
+                - "*"
+            - Sid: cloudformation
+              Effect: Allow
+              Action:
+                - "cloudformation:DescribeStackResource"
+              Resource:
+                - "*"
+      Runtime: go1.x
+      Timeout: 300
+  ListenerRuleSwapperPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt ListenerRuleSwapperFunction.Arn
+      Principal: cloudformation.amazonaws.com
+  S3CleanupFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      AutoPublishAlias: live
+      CodeUri: ../../dist/linux_amd64/S3Cleanup
+      Description: Cloudformation Custom Resource for S3 Bucket Cleaning
+      Handler: s3Cleanup
+      MemorySize: 128
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - "s3:*"
+                - "cloudformation:DescribeStacks"
+              Resource:
+                - "*"
+      Runtime: go1.x
+      Timeout: 300
+  S3CleanupPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt S3CleanupFunction.Arn
+      Principal: cloudformation.amazonaws.com
+  SequenceFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      AutoPublishAlias: live
+      CodeUri: ../../dist/linux_amd64/Sequence
+      Description: Cloudformation Custom Resource for Sequences
+      Handler: sequence
+      MemorySize: 128
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Sid: ssm
+              Action:
+                - "ssm:DeleteParameter"
+                - "ssm:DescribeParameters"
+                - "ssm:GetParametersByPath"
+                - "ssm:GetParameter"
+                - "ssm:GetParameters"
+                - "ssm:PutParameter"
+              Resource:
+                - "arn:aws:ssm:*:*:parameter/codesmith-forge/Sequence/*"
+      Runtime: go1.x
+      Timeout: 300
+  SequencePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt SequenceFunction.Arn
+      Principal: cloudformation.amazonaws.com
+  SequenceValueFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      AutoPublishAlias: live
+      CodeUri: ../../dist/linux_amd64/SequenceValue
+      Description: Cloudformation Custom Resource for Sequence Values
+      Handler: sequenceValue
+      MemorySize: 128
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Sid: ssm
+              Action:
+                - "ssm:DescribeParameters"
+                - "ssm:GetParametersByPath"
+                - "ssm:GetParameter"
+                - "ssm:GetParameters"
+                - "ssm:PutParameter"
+              Resource:
+                - "arn:aws:ssm:*:*:parameter/codesmith-forge/Sequence/*"
+      Runtime: go1.x
+      Timeout: 300
+  SequenceValuePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt SequenceValueFunction.Arn
+      Principal: cloudformation.amazonaws.com
+  # 3. CodeCommit
+  PipelineTriggerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      AutoPublishAlias: live
+      CodeUri: ../../dist/linux_amd64/PipelineTrigger
+      Runtime: go1.x
+      Handler: pipelineTrigger
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - "s3:PutObject"
+                - "s3:GetObject"
+                - "s3:GetObjectVersion"
+              Resource:
+                - Fn::Sub:
+                    - "${Bucket}/*"
+                    - Bucket: !ImportValue ForgeBuckets-EventsBucketArn
+      Environment:
+        Variables:
+          EVENTS_BUCKET_NAME: !ImportValue ForgeBuckets-EventsBucketName
+  PipelineTriggerPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt PipelineTriggerFunction.Arn
+      Principal: codecommit.amazonaws.com
+  # 4. Cognito
+  CogCondPreAuthFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      AutoPublishAlias: live
+      CodeUri: ../../dist/linux_amd64/CogCondPreAuth
+      Handler: cogCondPreAuth
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Sid: ssm
+              Action:
+                - "ssm:DescribeParameters"
+                - "ssm:GetParametersByPath"
+                - "ssm:GetParameter"
+                - "ssm:GetParameters"
+              Resource:
+                - "arn:aws:ssm:*:*:parameter/codesmith-forge/CogCondPreAuth/*"
+      Runtime: go1.x
+      Timeout: 10
+  CogCondPreAuthPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt CogCondPreAuthFunction.Arn
+      Principal: cognito-idp.amazonaws.com
+Outputs:
+  CfApiKey:
+    Value: !GetAtt ApiKeyFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-ApiKey"
+  CogCondPreAuth:
+    Value: !GetAtt CogCondPreAuthFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-CogCondPreAuth"
+  CogCondPreAuthSettings:
+    Value: !GetAtt CogCondPreAuthSettingsFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-CogCondPreAuthSettings"
+  CognitoUserPoolClientSettings:
+    Value: !GetAtt CognitoUserPoolClientSettingsFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-CognitoUserPoolClientSettings"
+  CognitoUserPoolDomain:
+    Value: !GetAtt CognitoUserPoolDomainFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-CognitoUserPoolDomain"
+  CognitoIdentityProvider:
+    Value: !GetAtt CognitoIdentityProviderFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-CognitoIdentityProvider"
+  DnsCertificate:
+    Value: !Ref DnsCertificateSNSTopic
+    Export:
+      Name: !Sub "${AWS::StackName}-DnsCertificate"
+  EcrCleanup:
+    Value: !GetAtt EcrCleanupFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-EcrCleanup"
+  ListenerRuleSwapper:
+    Value: !GetAtt ListenerRuleSwapperFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-ListenerRuleSwapper"
+  S3Cleanup:
+    Value: !GetAtt S3CleanupFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-S3Cleanup"
+  Sequence:
+    Value: !GetAtt SequenceFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-Sequence"
+  SequenceValue:
+    Value: !GetAtt SequenceValueFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-SequenceValue"
+  PipelineTrigger:
+    Value: !GetAtt PipelineTriggerFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-PipelineTrigger"
+  Version:
+    Value: !Ref Version
+    Export:
+      Name: !Sub "${AWS::StackName}-Version"

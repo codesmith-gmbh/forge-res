@@ -1,0 +1,16 @@
+{
+  "AllowedOAuthFlows": [
+    "code"
+  ],
+  "AllowedOAuthFlowsUserPoolClient": "true",
+  "AllowedOAuthScopes": [
+    "openid",
+    "email",
+    "aws.cognito.signin.user.admin"
+  ],
+  "CallbackURLs": ["https://auth.test.com/auth"],
+  "LogoutURLs": ["https://auth.test.com/signout"],
+  "SupportedIdentityProviders": ["COGNITO"],
+  "UserPoolId": "user-pool-id",
+  "UserPoolClientId": "user-pool-client-id"
+}

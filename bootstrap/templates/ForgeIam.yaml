@@ -1,0 +1,295 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: The policies and roles for the codesmith forge
+Conditions:
+  IsUsEast1:
+    Fn::Equals: [!Sub "${AWS::Region}", "us-east-1"]
+Mappings:
+  IamNaming:
+    Role:
+      CloudformationECSLambdaStackRole: ForgeIamCloudformationECSLambdaStack
+      CloudformationLambdaStackRole: ForgeIamCloudformationLambdaStack
+      CloudformationECSStackRole: ForgeIamCloudformationECSStack
+      ECSInstanceRole: ForgeIamECSInstanceRole
+    Policy:
+      CloudformationECSPolicy: ForgeIamCloudformationECS
+      CloudformationLambdaPolicy: ForgeIamCloudformationLambda
+      CloudformationBuilderPolicy: ForgeIamCloudformationBuilder
+Resources:
+  ECSInstanceRole:
+    Type: AWS::IAM::Role
+    Condition: IsUsEast1
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - "ec2.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      RoleName:
+        Fn::FindInMap: [IamNaming, Role, ECSInstanceRole]
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role
+  ECSInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Condition: IsUsEast1
+    Properties:
+      InstanceProfileName:
+        Fn::FindInMap: [IamNaming, Role, ECSInstanceRole]
+      Roles:
+        - !Ref ECSInstanceRole
+  CloudformationECSStackRole:
+    Type: AWS::IAM::Role
+    Condition: IsUsEast1
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - "cloudformation.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      RoleName:
+        Fn::FindInMap: [IamNaming, Role, CloudformationECSStackRole]
+      ManagedPolicyArns:
+        - !Ref CloudformationECSPolicy
+  CloudformationLambdaStackRole:
+    Type: AWS::IAM::Role
+    Condition: IsUsEast1
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - "cloudformation.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      RoleName:
+        Fn::FindInMap: [IamNaming, Role, CloudformationLambdaStackRole]
+      ManagedPolicyArns:
+        - !Ref CloudformationLambdaPolicy
+  CloudformationECSLambdaStackRole:
+    Type: AWS::IAM::Role
+    Condition: IsUsEast1
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - "cloudformation.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      RoleName:
+        Fn::FindInMap: [IamNaming, Role, CloudformationECSLambdaStackRole]
+      ManagedPolicyArns:
+        - !Ref CloudformationECSPolicy
+        - !Ref CloudformationLambdaPolicy
+  CloudformationECSPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Condition: IsUsEast1
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "s3:getObject"
+              - "elasticloadbalancing:*"
+              - "ecs:*"
+              - "ecr:*"
+              - "logs:*"
+              - "sns:Publish"
+            Resource:
+              - "*"
+          - Effect: Allow
+            Action:
+              - "iam:GetRole"
+              - "iam:CreateRole"
+              - "iam:DeleteRole"
+              - "iam:PutRolePolicy"
+              - "iam:AttachRolePolicy"
+              - "iam:DeleteRolePolicy"
+              - "iam:DetachRolePolicy"
+              - "iam:PassRole"
+            Resource:
+              - !Sub "arn:aws:iam::${AWS::AccountId}:role/*"
+          - Effect: Allow
+            Action:
+              - "ec2:DescribeVpcs"
+              - "ec2:DescribeSubnets"
+              - "ec2:DescribeSecurityGroups"
+              - "ec2:DescribeNetworkInterfaces"
+            Resource:
+              - "*"
+      ManagedPolicyName:
+        Fn::FindInMap: [IamNaming, Policy, CloudformationECSPolicy]
+  CloudformationLambdaPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Condition: IsUsEast1
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "lambda:*"
+            Resource:
+              - "*"
+          - Effect: Allow
+            Action:
+              - "s3:getObject"
+              - "apigateway:*"
+              - "logs:*"
+              - "sns:Publish"
+              - "cloudfront:*"
+            Resource:
+              - "*"
+          - Effect: Allow
+            Action:
+              - "iam:GetRole"
+              - "iam:CreateRole"
+              - "iam:DeleteRole"
+              - "iam:PutRolePolicy"
+              - "iam:AttachRolePolicy"
+              - "iam:DeleteRolePolicy"
+              - "iam:DetachRolePolicy"
+              - "iam:PassRole"
+            Resource:
+              - !Sub "arn:aws:iam::${AWS::AccountId}:role/*"
+          - Effect: Allow
+            Action:
+              - "cloudformation:CreateChangeSet"
+            Resource:
+              - "arn:aws:cloudformation:eu-west-1:aws:transform/Serverless-2016-10-31"
+          - Effect: Allow
+            Action:
+              - "ec2:DescribeVpcs"
+              - "ec2:DescribeSubnets"
+              - "ec2:DescribeSecurityGroups"
+              - "ec2:DescribeNetworkInterfaces"
+            Resource:
+              - "*"
+      ManagedPolicyName:
+        Fn::FindInMap: [IamNaming, Policy, CloudformationLambdaPolicy]
+  CloudformationBuilderPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Condition: IsUsEast1
+    Properties:
+      ManagedPolicyName:
+        Fn::FindInMap: [IamNaming, Policy, CloudformationBuilderPolicy]
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "iam:PassRole"
+              - "iam:GetRole"
+            Resource:
+              - !GetAtt CloudformationECSStackRole.Arn
+              - !GetAtt CloudformationLambdaStackRole.Arn
+              - !GetAtt CloudformationECSLambdaStackRole.Arn
+          - Effect: Allow
+            Action:
+              - "ecr:GetAuthorizationToken"
+              - "ecr:BatchCheckLayerAvailability"
+              - "ecr:GetDownloadUrlForLayer"
+              - "ecr:GetRepositoryPolicy"
+              - "ecr:DescribeRepositories"
+              - "ecr:ListImages"
+              - "ecr:DescribeImages"
+              - "ecr:BatchGetImage"
+              - "ecr:InitiateLayerUpload"
+              - "ecr:UploadLayerPart"
+              - "ecr:CompleteLayerUpload"
+              - "ecr:PutImage"
+            Resource:
+              - "*"
+          - Effect: Allow
+            Action:
+              - "cloudformation:CreateChangeSet"
+              - "cloudformation:CreateStack"
+              - "cloudformation:DescribeChangeSet"
+              - "cloudformation:DescribeStackEvents"
+              - "cloudformation:DescribeStackInstance"
+              - "cloudformation:DescribeStackResource"
+              - "cloudformation:DescribeStackResources"
+              - "cloudformation:DescribeStacks"
+              - "cloudformation:ExecuteChangeSet"
+              - "cloudformation:UpdateStack"
+              - "cloudformation:GetTemplateSummary"
+              - "cloudformation:ValidateTemplate"
+            Resource:
+              - "*"
+Outputs:
+  ECSInstanceRole:
+    Value:
+      Fn::Sub:
+        - "arn:aws:iam::${AWS::AccountId}:role/${Name}"
+        - Name:
+            Fn::FindInMap: [IamNaming, Role, ECSInstanceRole]
+    Export:
+      Name: !Sub "${AWS::StackName}-ECSInstanceRole"
+  ECSInstanceProfile:
+    Value:
+      Fn::Sub:
+        - "arn:aws:iam::${AWS::AccountId}:instance-profile/${Name}"
+        - Name:
+            Fn::FindInMap: [IamNaming, Role, ECSInstanceRole]
+    Export:
+      Name: !Sub "${AWS::StackName}-ECSInstanceProfile"
+  CloudformationECSStackRole:
+    Value:
+      Fn::Sub:
+        - "arn:aws:iam::${AWS::AccountId}:role/${Name}"
+        - Name:
+            Fn::FindInMap: [IamNaming, Role, CloudformationECSStackRole]
+    Export:
+      Name: !Sub "${AWS::StackName}-CloudformationECSStackRole"
+  CloudformationLambdaStackRole:
+    Value:
+      Fn::Sub:
+        - "arn:aws:iam::${AWS::AccountId}:role/${Name}"
+        - Name:
+            Fn::FindInMap: [IamNaming, Role, CloudformationLambdaStackRole]
+    Export:
+      Name: !Sub "${AWS::StackName}-CloudformationLambdaStackRole"
+  CloudformationECSLambdaStackRole:
+    Value:
+      Fn::Sub:
+        - "arn:aws:iam::${AWS::AccountId}:role/${Name}"
+        - Name:
+            Fn::FindInMap: [IamNaming, Role, CloudformationECSLambdaStackRole]
+    Export:
+      Name: !Sub "${AWS::StackName}-CloudformationECSLambdaStackRole"
+  CloudformationECSPolicy:
+    Value:
+      Fn::Sub:
+        - "arn:aws:iam::${AWS::AccountId}:policy/${Name}"
+        - Name:
+            Fn::FindInMap: [IamNaming, Policy, CloudformationECSPolicy]
+    Export:
+      Name: !Sub "${AWS::StackName}-CloudformationECSPolicy"
+  CloudformationLambdaPolicy:
+    Value:
+      Fn::Sub:
+        - "arn:aws:iam::${AWS::AccountId}:policy/${Name}"
+        - Name:
+            Fn::FindInMap: [IamNaming, Policy, CloudformationLambdaPolicy]
+    Export:
+      Name: !Sub "${AWS::StackName}-CloudformationLambdaPolicy"
+  CloudformationBuilderPolicy:
+    Value:
+      Fn::Sub:
+        - "arn:aws:iam::${AWS::AccountId}:policy/${Name}"
+        - Name:
+            Fn::FindInMap: [IamNaming, Policy, CloudformationBuilderPolicy]
+    Export:
+      Name: !Sub "${AWS::StackName}-CloudformationBuilderPolicy"
