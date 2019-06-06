@@ -48,7 +48,7 @@ func TestDatabaseCreationAndDeletion(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	password, err := BuildAuthToken(dbInstanceInfo.Host, p.rds.Region, properties.DatabaseName, p.rds.Credentials)
+	password, err := BuildAuthToken(dbInstanceInfo.Host, p.smg.Region, properties.DatabaseName, p.smg.Credentials)
 	if err != nil {
 		t.Fatal(err)
 	}
