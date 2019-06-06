@@ -4,12 +4,12 @@ import (
 	"context"
 	"github.com/aws/aws-lambda-go/cfn"
 	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider"
-	"github.com/codesmith-gmbh/forge/aws/testCommon"
+	"github.com/codesmith-gmbh/cgc/cgctesting"
 	"testing"
 )
 
 func TestDeleteUnexistingIdentiyProvider(t *testing.T) {
-	cfg := testCommon.MustTestConfig()
+	cfg := cgctesting.MustTestConfig()
 	p := newProc(cfg)
 	properties := Properties{UserPoolId: "a_aaaa", ProviderName: string(cognitoidentityprovider.IdentityProviderTypeTypeGoogle)}
 	_, _, err := p.deleteIdentityProvider(

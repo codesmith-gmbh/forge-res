@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/aws/aws-lambda-go/cfn"
-	"github.com/codesmith-gmbh/forge/aws/testCommon"
+	"github.com/codesmith-gmbh/cgc/cgctesting"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"testing"
@@ -46,7 +46,7 @@ func TestDnsPropertiesYaml(t *testing.T) {
 }
 
 func TestDeleteUnexistingResource(t *testing.T) {
-	cfg := testCommon.MustTestConfig()
+	cfg := cgctesting.MustTestConfig()
 	p := newProc(cfg)
 	_, _, err := p.deleteCognitoUserPoolClientSettings(
 		context.TODO(),

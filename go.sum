@@ -4,6 +4,8 @@ github.com/aws/aws-lambda-go v1.11.1 h1:wuOnhS5aqzPOWns71FO35PtbtBKHr4MYsPVt5qXL
 github.com/aws/aws-lambda-go v1.11.1/go.mod h1:Rr2SMTLeSMKgD45uep9V/NP8tnbCcySgu04cx0k/6cw=
 github.com/aws/aws-sdk-go-v2 v0.9.0 h1:dWtJKGRFv3UZkMBQaIzMsF0/y4ge3iQPWTzeC4r/vl4=
 github.com/aws/aws-sdk-go-v2 v0.9.0/go.mod h1:sa1GePZ/LfBGI4dSq30f6uR4Tthll8axxtEPvlpXZ8U=
+github.com/codesmith-gmbh/cgc v0.2.0 h1:3cxaZRabtuarBr3Eoc3VbpYcmgiHE6qLcdn7BKuAK44=
+github.com/codesmith-gmbh/cgc v0.2.0/go.mod h1:AB0a5BBOU7DcYc4rXaADflVOPRqPckR1vW/hnViajI4=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=

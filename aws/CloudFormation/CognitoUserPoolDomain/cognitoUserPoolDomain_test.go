@@ -3,12 +3,12 @@ package main
 import (
 	"context"
 	"github.com/aws/aws-lambda-go/cfn"
-	"github.com/codesmith-gmbh/forge/aws/testCommon"
+	"github.com/codesmith-gmbh/cgc/cgctesting"
 	"testing"
 )
 
 func TestDeleteUnexisting(t *testing.T) {
-	cfg := testCommon.MustTestConfig()
+	cfg := cgctesting.MustTestConfig()
 	p := newProc(cfg)
 	_, _, err := p.deleteDomain(
 		context.TODO(),

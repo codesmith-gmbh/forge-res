@@ -7,7 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/acm"
 	"github.com/aws/aws-sdk-go-v2/service/route53"
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
-	"github.com/codesmith-gmbh/forge/aws/testCommon"
+	"github.com/codesmith-gmbh/cgc/cgctesting"
 	"github.com/pkg/errors"
 	"strings"
 	"testing"
@@ -338,7 +338,7 @@ type testProc struct {
 }
 
 func mustTestProc() *testProc {
-	cfg := testCommon.MustTestConfig()
+	cfg := cgctesting.MustTestConfig()
 	cm := acm.New(cfg)
 	acmService := func(_ Properties) (*acm.Client, error) {
 		return cm, nil
