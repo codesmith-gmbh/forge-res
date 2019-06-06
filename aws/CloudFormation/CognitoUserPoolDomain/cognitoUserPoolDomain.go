@@ -20,7 +20,7 @@ func main() {
 }
 
 type proc struct {
-	idp *cognitoidentityprovider.CognitoIdentityProvider
+	idp *cognitoidentityprovider.Client
 }
 
 func newProc(cfg aws.Config) *proc {

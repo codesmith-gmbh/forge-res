@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/aws/aws-lambda-go/cfn"
@@ -48,6 +49,7 @@ func TestDeleteUnexistingResource(t *testing.T) {
 	cfg := testCommon.MustTestConfig()
 	p := newProc(cfg)
 	_, _, err := p.deleteCognitoUserPoolClientSettings(
+		context.TODO(),
 		cfn.Event{PhysicalResourceID: "aaaaaaaaaaaa"},
 		Properties{UserPoolId: "a_aaaaaaaaaaa", UserPoolClientId: "aaaaaaaaaaaa"},
 	)

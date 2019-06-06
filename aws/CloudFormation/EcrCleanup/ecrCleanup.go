@@ -12,8 +12,8 @@ import (
 )
 
 type proc struct {
-	ecr *awsecr.ECR
-	cf  *cloudformation.CloudFormation
+	ecr *awsecr.Client
+	cf  *cloudformation.Client
 }
 
 // The lambda is started using the AWS lambda go sdk. The handler function

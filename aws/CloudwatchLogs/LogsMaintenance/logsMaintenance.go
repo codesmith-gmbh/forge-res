@@ -52,8 +52,8 @@ func (p *proc) processEvent(ctx context.Context, event events.CloudWatchEvent) e
 }
 
 type proc struct {
-	sns *sns.SNS
-	ec2 *ec2.EC2
+	sns *sns.Client
+	ec2 *ec2.Client
 }
 
 type problem struct {

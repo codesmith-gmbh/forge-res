@@ -63,7 +63,7 @@ func main() {
 }
 
 type proc struct {
-	s3 *s3.S3
+	s3 *s3.Client
 }
 
 func newProc(cfg aws.Config) *proc {

@@ -55,8 +55,8 @@ func main() {
 }
 
 type proc struct {
-	apg *apigateway.APIGateway
-	cf  *cloudformation.CloudFormation
+	apg *apigateway.Client
+	cf  *cloudformation.Client
 }
 
 func newProc(cfg aws.Config) *proc {

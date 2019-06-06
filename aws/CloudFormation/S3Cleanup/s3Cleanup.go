@@ -13,8 +13,8 @@ import (
 )
 
 type proc struct {
-	s3 *awss3.S3
-	cf *cloudformation.CloudFormation
+	s3 *awss3.Client
+	cf *cloudformation.Client
 }
 
 func main() {

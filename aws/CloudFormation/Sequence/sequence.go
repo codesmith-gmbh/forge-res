@@ -13,7 +13,7 @@ import (
 )
 
 type proc struct {
-	ssm *awsssm.SSM
+	ssm *awsssm.Client
 }
 
 func main() {

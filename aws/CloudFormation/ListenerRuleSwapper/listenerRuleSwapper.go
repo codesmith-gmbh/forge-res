@@ -25,14 +25,14 @@ import (
 	"github.com/aws/aws-lambda-go/cfn"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
-	"github.com/aws/aws-sdk-go-v2/service/elbv2"
+	elbv2 "github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2"
 	"github.com/codesmith-gmbh/forge/aws/common"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 	"strconv"
 )
 
-var elb *elbv2.ELBV2
+var elb *elbv2.Client
 
 func main() {
 	cfg := common.MustConfig()
@@ -41,8 +41,8 @@ func main() {
 }
 
 type proc struct {
-	cf  *cloudformation.CloudFormation
-	elb *elbv2.ELBV2
+	cf  *cloudformation.Client
+	elb *elbv2.Client
 }
 
 type Properties struct {

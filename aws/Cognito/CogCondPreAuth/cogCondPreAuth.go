@@ -47,7 +47,7 @@ func main() {
 }
 
 type proc struct {
-	ssm *ssm.SSM
+	ssm *ssm.Client
 }
 
 func newProc(cfg aws.Config) *proc {

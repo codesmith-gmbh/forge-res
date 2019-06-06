@@ -60,8 +60,8 @@ func main() {
 }
 
 type proc struct {
-	idp *cognitoidentityprovider.CognitoIdentityProvider
-	ssm *ssm.SSM
+	idp *cognitoidentityprovider.Client
+	ssm *ssm.Client
 }
 
 func newProc(cfg aws.Config) *proc {

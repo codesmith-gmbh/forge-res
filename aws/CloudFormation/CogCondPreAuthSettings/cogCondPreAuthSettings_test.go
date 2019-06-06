@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"github.com/codesmith-gmbh/forge/aws/common"
 	"github.com/codesmith-gmbh/forge/aws/testCommon"
 	"testing"
@@ -9,7 +10,7 @@ import (
 func TestDeletionUnexistingParameter(t *testing.T) {
 	cfg := testCommon.MustTestConfig()
 	p := newProc(cfg)
-	_, _, err := p.deleteParameter(common.CogCondPreAuthParameterName("???", "???"))
+	_, _, err := p.deleteParameter(context.TODO(), common.CogCondPreAuthParameterName("???", "???"))
 	if err != nil {
 		t.Error(err)
 	}

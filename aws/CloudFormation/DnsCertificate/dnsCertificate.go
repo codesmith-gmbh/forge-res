@@ -49,19 +49,19 @@ func main() {
 }
 
 type proc struct {
-	acmService func(properties Properties) (*acm.ACM, error)
-	cf         *cloudformation.CloudFormation
-	r53        *route53.Route53
-	ssm        *ssm.SSM
-	step       *sfn.SFN
+	acmService func(properties Properties) (*acm.Client, error)
+	cf         *cloudformation.Client
+	r53        *route53.Client
+	ssm        *ssm.Client
+	step       *sfn.Client
 }
 
 type subproc struct {
-	acm  *acm.ACM
-	cf   *cloudformation.CloudFormation
-	r53  *route53.Route53
-	ssm  *ssm.SSM
-	step *sfn.SFN
+	acm  *acm.Client
+	cf   *cloudformation.Client
+	r53  *route53.Client
+	ssm  *ssm.Client
+	step *sfn.Client
 }
 
 // Properties and decoding.
@@ -750,7 +750,7 @@ func (p *subproc) waitForChange(ctx context.Context, changeInfo *route53.ChangeI
 
 // Utilities
 
-func acmService(properties Properties) (*acm.ACM, error) {
+func acmService(properties Properties) (*acm.Client, error) {
 	var cfg aws.Config
 	var err error
 	if len(properties.Region) > 0 {
