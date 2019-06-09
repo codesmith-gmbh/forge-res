@@ -3,25 +3,35 @@ package main
 import (
 	"context"
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/aws/external"
-	v4 "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
+	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
+	"github.com/aws/aws-sdk-go-v2/service/ec2"
+	"github.com/codesmith-gmbh/cgc/cgcaws"
+	"github.com/codesmith-gmbh/cgc/cgclog"
+	"github.com/codesmith-gmbh/cgc/cgcpg"
+	"github.com/codesmith-gmbh/cgc/cgctesting"
 	"github.com/jackc/pgx"
-	"net/http"
-	"strings"
 	"testing"
-	"time"
+)
+
+const (
+	dbInstanceIdentifier    = "codesmith"
+	dbInstanceStack         = "PostgresInstance-" + dbInstanceIdentifier
+	securityGroupOutputName = "SecurityGroup"
+	testIngressDescription  = "github.com/codesmith-gmbh/forge/templates/postgresInstance/test"
 )
 
 // Before running the tests, you must have a local `codesmith` profile
 
 func TestDatabaseCreationAndDeletion(t *testing.T) {
-	defer SyncSugaredLogger(log)
+	defer cgclog.SyncSugaredLogger(log)
 	ctx := context.TODO()
 	properties := Properties{
 		DatabaseName: "test",
 	}
-	cfg := MustConfig(external.WithSharedConfigProfile("codesmith"))
-	p := newProc(cfg)
+	cfg := cgctesting.MustTestConfig()
+	p, sgs := mustNewTestProc(cfg)
+	//noinspection GoUnhandledErrorResult
+	defer sgs.EnsureDescribedIngressRevoked(ctx, p.groupId, testIngressDescription)
 	adminConn, err := p.connect(ctx, properties, postgrepDatabase)
 	if err != nil {
 		t.Fatal(err)
@@ -48,23 +58,18 @@ func TestDatabaseCreationAndDeletion(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	password, err := BuildAuthToken(dbInstanceInfo.Host, p.smg.Region, properties.DatabaseName, p.smg.Credentials)
+	config, err := cgcpg.NewConfig(
+		cgcpg.RdsIamConfigOption{
+			Host: dbInstanceInfo.Host, Port: 5432,
+			Database: properties.DatabaseName, Username: properties.DatabaseName,
+			Config: cfg,
+		},
+		cgcpg.TlsConfigOption{Host: dbInstanceInfo.Host},
+	)
 	if err != nil {
 		t.Fatal(err)
 	}
-	tlsConfig, err := loadTlsConfig(dbInstanceInfo.Host)
-	if err != nil {
-		t.Fatal(err)
-	}
-	userConnConfig := pgx.ConnConfig{
-		Host:      dbInstanceInfo.Host,
-		Port:      dbInstanceInfo.Port,
-		User:      properties.DatabaseName,
-		Database:  properties.DatabaseName,
-		Password:  password,
-		TLSConfig: tlsConfig,
-	}
-	userConn, err := pgx.Connect(userConnConfig)
+	userConn, err := pgx.Connect(config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,7 +88,7 @@ func TestDatabaseCreationAndDeletion(t *testing.T) {
 }
 
 func TestDatabaseRename(t *testing.T) {
-	defer SyncSugaredLogger(log)
+	defer cgclog.SyncSugaredLogger(log)
 	ctx := context.TODO()
 	oldProperties := Properties{
 		DatabaseName: "test",
@@ -91,8 +96,10 @@ func TestDatabaseRename(t *testing.T) {
 	newProperties := Properties{
 		DatabaseName: "test2",
 	}
-	cfg := MustConfig(external.WithSharedConfigProfile("codesmith"))
-	p := newProc(cfg)
+	cfg := cgctesting.MustTestConfig()
+	p, sgs := mustNewTestProc(cfg)
+	//noinspection GoUnhandledErrorResult
+	defer sgs.EnsureDescribedIngressRevoked(ctx, p.groupId, testIngressDescription)
 	adminConn, err := p.connect(ctx, oldProperties, postgrepDatabase)
 	if err != nil {
 		t.Fatal(err)
@@ -129,35 +136,16 @@ func TestDatabaseRename(t *testing.T) {
 	}
 }
 
-func BuildAuthToken(endpoint, region, dbUser string, credProvider aws.CredentialsProvider) (string, error) {
-	// the scheme is arbitrary and is only needed because validation of the URL requires one.
-	if !(strings.HasPrefix(endpoint, "http://") || strings.HasPrefix(endpoint, "https://")) {
-		endpoint = "https://" + endpoint + ":5432"
-	}
-
-	req, err := http.NewRequest("GET", endpoint, nil)
+func mustNewTestProc(config aws.Config) (*proc, *cgcaws.SGS) {
+	ctx := context.TODO()
+	cf := cloudformation.New(config)
+	groupId, err := cgcaws.FetchStackOutputValue(ctx, cf, dbInstanceStack, securityGroupOutputName)
 	if err != nil {
-		return "", err
+		panic(err)
 	}
-	values := req.URL.Query()
-	values.Set("Action", "connect")
-	values.Set("DBUser", dbUser)
-	req.URL.RawQuery = values.Encode()
-
-	signer := v4.Signer{
-		Credentials: credProvider,
+	sgs := cgcaws.NewAwsSecurityGroupService(ec2.New(config))
+	if err := sgs.OpenSecurityGroup(ctx, groupId, testIngressDescription); err != nil {
+		panic(err)
 	}
-	_, err = signer.Presign(req, nil, "rds-db", region, 15*time.Minute, time.Now())
-	if err != nil {
-		return "", err
-	}
-
-	url := req.URL.String()
-	if strings.HasPrefix(url, "http://") {
-		url = url[len("http://"):]
-	} else if strings.HasPrefix(url, "https://") {
-		url = url[len("https://"):]
-	}
-
-	return url, nil
+	return newProc(config, dbInstanceIdentifier, groupId), sgs
 }
