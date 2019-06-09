@@ -10,7 +10,7 @@ import (
 
 func TestDeleteUnexistingIdentiyProvider(t *testing.T) {
 	cfg := cgctesting.MustTestConfig()
-	p := newProc(cfg)
+	p := newProcFromConfig(cfg)
 	properties := Properties{UserPoolId: "a_aaaa", ProviderName: string(cognitoidentityprovider.IdentityProviderTypeTypeGoogle)}
 	_, _, err := p.deleteIdentityProvider(
 		context.TODO(),

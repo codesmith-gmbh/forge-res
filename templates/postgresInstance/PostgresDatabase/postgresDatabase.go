@@ -51,10 +51,10 @@ func main() {
 		//noinspection GoUnhandledErrorResult
 		defer sgs.EnsureDescribedIngressRevoked(context.TODO(), groupId, ingressDescription)
 	}
-	lambda.Start(cfn.LambdaWrap(cgcaws.WrapForErrorPhysicalId(p.ProcessEvent)))
+	lambda.Start(cfn.LambdaWrap(cgccf.WrapForErrorPhysicalId(p.ProcessEvent)))
 }
 
-func initLambda(dbInstanceIdentifier, groupId, ingressDescription string) (cgcaws.EventProcessor, *cgcaws.SGS) {
+func initLambda(dbInstanceIdentifier, groupId, ingressDescription string) (cgccf.EventProcessor, *cgcaws.SGS) {
 	if dbInstanceIdentifier == "" {
 		return constantErrorProcessorWithMsg("dbInstanceIdentifier not defined")
 	}
@@ -66,19 +66,19 @@ func initLambda(dbInstanceIdentifier, groupId, ingressDescription string) (cgcaw
 	}
 	cfg, err := external.LoadDefaultAWSConfig()
 	if err != nil {
-		return &cgcaws.ConstantErrorEventProcessor{Error: err}, nil
+		return &cgccf.ConstantErrorEventProcessor{Error: err}, nil
 	}
 	ec2Client := ec2.New(cfg)
 	sgs := cgcaws.NewAwsSecurityGroupService(ec2Client)
 	err = sgs.OpenSecurityGroup(context.TODO(), groupId, ingressDescription)
 	if err != nil {
-		return &cgcaws.ConstantErrorEventProcessor{Error: err}, sgs
+		return &cgccf.ConstantErrorEventProcessor{Error: err}, sgs
 	}
 	return newProc(cfg, dbInstanceIdentifier, groupId), sgs
 }
 
-func constantErrorProcessorWithMsg(message string) (cgcaws.EventProcessor, *cgcaws.SGS) {
-	return &cgcaws.ConstantErrorEventProcessor{Error: errors.New(message)}, nil
+func constantErrorProcessorWithMsg(message string) (cgccf.EventProcessor, *cgcaws.SGS) {
+	return &cgccf.ConstantErrorEventProcessor{Error: errors.New(message)}, nil
 }
 
 type Properties struct {

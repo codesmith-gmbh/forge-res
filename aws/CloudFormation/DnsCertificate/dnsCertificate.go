@@ -15,7 +15,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/route53"
 	"github.com/aws/aws-sdk-go-v2/service/sfn"
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
-	"github.com/codesmith-gmbh/cgc/cgcaws"
 	"github.com/codesmith-gmbh/cgc/cgclog"
 	"github.com/codesmith-gmbh/forge/aws/common"
 	"github.com/google/uuid"
@@ -39,15 +38,20 @@ const (
 
 func main() {
 	defer cgclog.SyncSugaredLogger(log)
-	cfg := cgcaws.MustConfig()
-	p := &proc{
-		acmService: acmService,
-		cf:         cloudformation.New(cfg),
-		r53:        route53.New(cfg),
-		ssm:        ssm.New(cfg),
-		step:       sfn.New(cfg),
-	}
+	p := newProc()
 	lambda.Start(p.processSNSEvent)
+}
+
+type SNSEventProcessor interface {
+	processSNSEvent(ctx context.Context, event events.SNSEvent) error
+}
+
+type ConstantErrorSNSEventProcessor struct {
+	Error error
+}
+
+func (p *ConstantErrorSNSEventProcessor) processSNSEvent(ctx context.Context, event events.SNSEvent) error {
+	return p.Error
 }
 
 type proc struct {
@@ -56,6 +60,24 @@ type proc struct {
 	r53        *route53.Client
 	ssm        *ssm.Client
 	step       *sfn.Client
+}
+
+func newProc() SNSEventProcessor {
+	cfg, err := external.LoadDefaultAWSConfig()
+	if err != nil {
+		return &ConstantErrorSNSEventProcessor{Error: err}
+	}
+	return newProcFromConfig(cfg)
+}
+
+func newProcFromConfig(cfg aws.Config) SNSEventProcessor {
+	return &proc{
+		acmService: acmService,
+		cf:         cloudformation.New(cfg),
+		r53:        route53.New(cfg),
+		ssm:        ssm.New(cfg),
+		step:       sfn.New(cfg),
+	}
 }
 
 type subproc struct {

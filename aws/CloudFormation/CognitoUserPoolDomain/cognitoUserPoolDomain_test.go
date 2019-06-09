@@ -9,7 +9,7 @@ import (
 
 func TestDeleteUnexisting(t *testing.T) {
 	cfg := cgctesting.MustTestConfig()
-	p := newProc(cfg)
+	p := newProcFromConfig(cfg)
 	_, _, err := p.deleteDomain(
 		context.TODO(),
 		cfn.Event{PhysicalResourceID: "userpool.test.com"},

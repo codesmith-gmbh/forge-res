@@ -35,12 +35,12 @@ package main
 import (
 	"context"
 	"github.com/aws/aws-lambda-go/cfn"
-	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/awserr"
+	"github.com/aws/aws-sdk-go-v2/aws/external"
 	"github.com/aws/aws-sdk-go-v2/service/apigateway"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
-	"github.com/codesmith-gmbh/cgc/cgcaws"
+	"github.com/codesmith-gmbh/cgc/cgccf"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 )
@@ -49,9 +49,8 @@ import (
 // does the actual work of creating the apikey. Cloudformation sends an
 // event to signify that a resources must be created, updated or deleted.
 func main() {
-	cfg := cgcaws.MustConfig()
-	p := newProc(cfg)
-	lambda.Start(cfn.LambdaWrap(p.processEvent))
+	p := newProc()
+	cgccf.StartEventProcessor(p)
 }
 
 type proc struct {
@@ -59,7 +58,15 @@ type proc struct {
 	cf  *cloudformation.Client
 }
 
-func newProc(cfg aws.Config) *proc {
+func newProc() cgccf.EventProcessor {
+	cfg, err := external.LoadDefaultAWSConfig()
+	if err != nil {
+		return &cgccf.ConstantErrorEventProcessor{Error: err}
+	}
+	return newProcFromConfig(cfg)
+}
+
+func newProcFromConfig(cfg aws.Config) *proc {
 	return &proc{apg: apigateway.New(cfg), cf: cloudformation.New(cfg)}
 }
 
@@ -81,7 +88,7 @@ func validateProperties(input map[string]interface{}) (Properties, error) {
 }
 
 // It is not possible to update the resource, if the ordinal changes, a new resource is allocated.
-func (p *proc) processEvent(ctx context.Context, event cfn.Event) (string, map[string]interface{}, error) {
+func (p *proc) ProcessEvent(ctx context.Context, event cfn.Event) (string, map[string]interface{}, error) {
 	properties, err := validateProperties(event.ResourceProperties)
 	if err != nil {
 		return "", nil, err

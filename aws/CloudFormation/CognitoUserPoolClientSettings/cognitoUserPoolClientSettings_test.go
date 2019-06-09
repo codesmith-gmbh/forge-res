@@ -47,7 +47,7 @@ func TestDnsPropertiesYaml(t *testing.T) {
 
 func TestDeleteUnexistingResource(t *testing.T) {
 	cfg := cgctesting.MustTestConfig()
-	p := newProc(cfg)
+	p := newProcFromConfig(cfg)
 	_, _, err := p.deleteCognitoUserPoolClientSettings(
 		context.TODO(),
 		cfn.Event{PhysicalResourceID: "aaaaaaaaaaaa"},

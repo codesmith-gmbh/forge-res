@@ -9,7 +9,7 @@ import (
 
 func TestDeletionUnexistingParameter(t *testing.T) {
 	cfg := cgctesting.MustTestConfig()
-	p := newProc(cfg)
+	p := newProcFromConfig(cfg)
 	_, _, err := p.deleteParameter(context.TODO(), common.CogCondPreAuthParameterName("???", "???"))
 	if err != nil {
 		t.Error(err)

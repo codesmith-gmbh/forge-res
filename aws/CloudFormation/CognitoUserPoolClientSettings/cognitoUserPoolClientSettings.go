@@ -4,11 +4,11 @@ package main
 import (
 	"context"
 	"github.com/aws/aws-lambda-go/cfn"
-	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/awserr"
+	"github.com/aws/aws-sdk-go-v2/aws/external"
 	cip "github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider"
-	"github.com/codesmith-gmbh/cgc/cgcaws"
+	"github.com/codesmith-gmbh/cgc/cgccf"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 	"strconv"
@@ -48,20 +48,27 @@ func validateProperties(input map[string]interface{}) (Properties, error) {
 }
 
 func main() {
-	cfg := cgcaws.MustConfig()
-	p := newProc(cfg)
-	lambda.Start(cfn.LambdaWrap(p.processEvent))
+	p := newProc()
+	cgccf.StartEventProcessor(p)
 }
 
 type proc struct {
 	cog *cip.Client
 }
 
-func newProc(cfg aws.Config) *proc {
+func newProc() cgccf.EventProcessor {
+	cfg, err := external.LoadDefaultAWSConfig()
+	if err != nil {
+		return &cgccf.ConstantErrorEventProcessor{Error: err}
+	}
+	return newProcFromConfig(cfg)
+}
+
+func newProcFromConfig(cfg aws.Config) *proc {
 	return &proc{cog: cip.New(cfg)}
 }
 
-func (p *proc) processEvent(ctx context.Context, event cfn.Event) (string, map[string]interface{}, error) {
+func (p *proc) ProcessEvent(ctx context.Context, event cfn.Event) (string, map[string]interface{}, error) {
 	properties, err := validateProperties(event.ResourceProperties)
 	if err != nil {
 		return event.PhysicalResourceID, nil, err

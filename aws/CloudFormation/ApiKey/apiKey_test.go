@@ -8,7 +8,7 @@ import (
 
 func TestDeletionUnexistingApiKey(t *testing.T) {
 	cfg := cgctesting.MustTestConfig()
-	p := newProc(cfg)
+	p := newProcFromConfig(cfg)
 	var apiKeyId = "??????"
 	_, _, err := p.deleteApiKey(context.TODO(), apiKeyId)
 	if err != nil {
