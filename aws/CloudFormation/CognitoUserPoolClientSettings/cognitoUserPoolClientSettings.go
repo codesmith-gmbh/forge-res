@@ -8,7 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/awserr"
 	cip "github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider"
-	"github.com/codesmith-gmbh/forge/aws/common"
+	"github.com/codesmith-gmbh/cgc/cgcaws"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 	"strconv"
@@ -48,7 +48,7 @@ func validateProperties(input map[string]interface{}) (Properties, error) {
 }
 
 func main() {
-	cfg := common.MustConfig()
+	cfg := cgcaws.MustConfig()
 	p := newProc(cfg)
 	lambda.Start(cfn.LambdaWrap(p.processEvent))
 }

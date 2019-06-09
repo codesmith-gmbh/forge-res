@@ -7,6 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/awserr"
 	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider"
+	"github.com/codesmith-gmbh/cgc/cgcaws"
 	"github.com/codesmith-gmbh/forge/aws/common"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
@@ -14,7 +15,7 @@ import (
 )
 
 func main() {
-	cfg := common.MustConfig()
+	cfg := cgcaws.MustConfig()
 	p := newProc(cfg)
 	lambda.Start(cfn.LambdaWrap(p.processEvent))
 }
@@ -57,7 +58,7 @@ func (p *proc) processEvent(ctx context.Context, event cfn.Event) (string, map[s
 }
 
 func (p *proc) createDomain(ctx context.Context, event cfn.Event, properties Properties) (string, map[string]interface{}, error) {
-	var out *cognitoidentityprovider.CreateUserPoolDomainOutput
+	var out *cognitoidentityprovider.CreateUserPoolDomainResponse
 	var err error
 	if properties.CustomDomainConfig.CertificateArn == nil {
 		out, err = p.idp.CreateUserPoolDomainRequest(&cognitoidentityprovider.CreateUserPoolDomainInput{

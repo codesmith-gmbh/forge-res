@@ -10,20 +10,21 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/sns"
-	"github.com/codesmith-gmbh/forge/aws/common"
+	"github.com/codesmith-gmbh/cgc/cgcaws"
+	"github.com/codesmith-gmbh/cgc/cgclog"
 	"github.com/pkg/errors"
 	"os"
 )
 
 var (
 	snsAlertTopicArn             = os.Getenv("SNS_ALERT_TOPIC_ARN")
-	log                          = common.MustSugaredLogger()
+	log                          = cgclog.MustSugaredLogger()
 	DefaultRetentionInDays int64 = 90
 )
 
 func main() {
-	defer common.SyncSugaredLogger(log)
-	cfg := common.MustConfig()
+	defer cgclog.SyncSugaredLogger(log)
+	cfg := cgcaws.MustConfig()
 	p := &proc{sns: sns.New(cfg), ec2: ec2.New(cfg)}
 	lambda.Start(p.processEvent)
 }
@@ -62,7 +63,7 @@ type problem struct {
 
 func (p *proc) checkLogGroupExpiration(ctx context.Context, region string) []problem {
 	problems := make([]problem, 0, 10)
-	cfg := common.MustConfig(external.WithRegion(region))
+	cfg := cgcaws.MustConfig(external.WithRegion(region))
 	logs := cloudwatchlogs.New(cfg)
 	grps, err := logs.DescribeLogGroupsRequest(&cloudwatchlogs.DescribeLogGroupsInput{}).Send(ctx)
 	if err != nil {

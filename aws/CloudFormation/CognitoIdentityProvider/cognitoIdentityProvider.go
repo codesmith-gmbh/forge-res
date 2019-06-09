@@ -8,6 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws/awserr"
 	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider"
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
+	"github.com/codesmith-gmbh/cgc/cgcaws"
 	"github.com/codesmith-gmbh/forge/aws/common"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
@@ -54,7 +55,7 @@ func (p *proc) validateProperties(ctx context.Context, input map[string]interfac
 }
 
 func main() {
-	cfg := common.MustConfig()
+	cfg := cgcaws.MustConfig()
 	p := newProc(cfg)
 	lambda.Start(cfn.LambdaWrap(p.processEvent))
 }

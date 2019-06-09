@@ -16,7 +16,8 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
-	"github.com/codesmith-gmbh/forge/aws/common"
+	"github.com/codesmith-gmbh/cgc/cgcaws"
+	"github.com/codesmith-gmbh/cgc/cgclog"
 	"github.com/pkg/errors"
 	"strings"
 )
@@ -36,12 +37,12 @@ type Settings struct {
 
 var (
 	zero = CognitoEventUserPoolsPreAuth{}
-	log  = common.MustSugaredLogger()
+	log  = cgclog.MustSugaredLogger()
 )
 
 func main() {
-	defer common.SyncSugaredLogger(log)
-	cfg := common.MustConfig()
+	defer cgclog.SyncSugaredLogger(log)
+	cfg := cgcaws.MustConfig()
 	p := newProc(cfg)
 	lambda.Start(p.processEvent)
 }

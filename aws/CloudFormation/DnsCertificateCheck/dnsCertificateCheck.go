@@ -8,7 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/external"
 	"github.com/aws/aws-sdk-go-v2/service/acm"
-	"github.com/codesmith-gmbh/forge/aws/common"
+	"github.com/codesmith-gmbh/cgc/cgclog"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 	"regexp"
@@ -16,14 +16,14 @@ import (
 
 const MaxRoundCount = 60
 
-var log = common.MustSugaredLogger()
+var log = cgclog.MustSugaredLogger()
 
 type proc struct {
 	acmService func(certificateArn string) (*acm.Client, error)
 }
 
 func main() {
-	defer common.SyncSugaredLogger(log)
+	defer cgclog.SyncSugaredLogger(log)
 	p := &proc{acmService: acmService}
 	lambda.Start(p.processEvent)
 }

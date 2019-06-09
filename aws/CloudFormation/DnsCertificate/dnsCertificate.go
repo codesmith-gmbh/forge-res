@@ -15,6 +15,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/route53"
 	"github.com/aws/aws-sdk-go-v2/service/sfn"
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
+	"github.com/codesmith-gmbh/cgc/cgcaws"
+	"github.com/codesmith-gmbh/cgc/cgclog"
 	"github.com/codesmith-gmbh/forge/aws/common"
 	"github.com/google/uuid"
 	"github.com/mitchellh/mapstructure"
@@ -26,7 +28,7 @@ import (
 )
 
 var (
-	log             = common.MustSugaredLogger()
+	log             = cgclog.MustSugaredLogger()
 	stateMachineArn = os.Getenv("STATE_MACHINE_ARN")
 )
 
@@ -36,8 +38,8 @@ const (
 )
 
 func main() {
-	defer common.SyncSugaredLogger(log)
-	cfg := common.MustConfig()
+	defer cgclog.SyncSugaredLogger(log)
+	cfg := cgcaws.MustConfig()
 	p := &proc{
 		acmService: acmService,
 		cf:         cloudformation.New(cfg),

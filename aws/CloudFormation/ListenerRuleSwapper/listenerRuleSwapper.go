@@ -26,7 +26,7 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
 	elbv2 "github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2"
-	"github.com/codesmith-gmbh/forge/aws/common"
+	"github.com/codesmith-gmbh/cgc/cgcaws"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 	"strconv"
@@ -35,7 +35,7 @@ import (
 var elb *elbv2.Client
 
 func main() {
-	cfg := common.MustConfig()
+	cfg := cgcaws.MustConfig()
 	p := &proc{cf: cloudformation.New(cfg), elb: elbv2.New(cfg)}
 	lambda.Start(cfn.LambdaWrap(p.processEvent))
 }

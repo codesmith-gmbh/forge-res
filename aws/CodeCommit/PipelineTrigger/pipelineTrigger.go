@@ -17,7 +17,8 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/codesmith-gmbh/forge/aws/common"
+	"github.com/codesmith-gmbh/cgc/cgcaws"
+	"github.com/codesmith-gmbh/cgc/cgclog"
 	"github.com/pkg/errors"
 	"os"
 	"strings"
@@ -53,11 +54,11 @@ cd repo
 cd
 `
 
-var log = common.MustSugaredLogger()
+var log = cgclog.MustSugaredLogger()
 
 func main() {
-	defer common.SyncSugaredLogger(log)
-	cfg := common.MustConfig()
+	defer cgclog.SyncSugaredLogger(log)
+	cfg := cgcaws.MustConfig()
 	p := newProc(cfg)
 	lambda.Start(p.processEvent)
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"github.com/codesmith-gmbh/cgc/cgcaws"
 	"github.com/codesmith-gmbh/forge/aws/common"
 
 	"github.com/aws/aws-lambda-go/cfn"
@@ -18,7 +19,7 @@ type proc struct {
 }
 
 func main() {
-	cfg := common.MustConfig()
+	cfg := cgcaws.MustConfig()
 	p := &proc{s3: awss3.New(cfg), cf: cloudformation.New(cfg)}
 	lambda.Start(cfn.LambdaWrap(p.processEvent))
 }

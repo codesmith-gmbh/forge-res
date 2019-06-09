@@ -40,7 +40,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws/awserr"
 	"github.com/aws/aws-sdk-go-v2/service/apigateway"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
-	"github.com/codesmith-gmbh/forge/aws/common"
+	"github.com/codesmith-gmbh/cgc/cgcaws"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 )
@@ -49,7 +49,7 @@ import (
 // does the actual work of creating the apikey. Cloudformation sends an
 // event to signify that a resources must be created, updated or deleted.
 func main() {
-	cfg := common.MustConfig()
+	cfg := cgcaws.MustConfig()
 	p := newProc(cfg)
 	lambda.Start(cfn.LambdaWrap(p.processEvent))
 }
