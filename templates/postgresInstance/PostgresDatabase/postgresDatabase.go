@@ -6,12 +6,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/aws/aws-lambda-go/cfn"
-	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/external"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	"github.com/codesmith-gmbh/cgc/cgcaws"
+	"github.com/codesmith-gmbh/cgc/cgccf"
 	"github.com/codesmith-gmbh/cgc/cgclog"
 	"github.com/codesmith-gmbh/cgc/cgcpg"
 	"github.com/jackc/pgx"
@@ -51,7 +51,7 @@ func main() {
 		//noinspection GoUnhandledErrorResult
 		defer sgs.EnsureDescribedIngressRevoked(context.TODO(), groupId, ingressDescription)
 	}
-	lambda.Start(cfn.LambdaWrap(cgccf.WrapForErrorPhysicalId(p.ProcessEvent)))
+	cgccf.StartEventProcessor(p)
 }
 
 func initLambda(dbInstanceIdentifier, groupId, ingressDescription string) (cgccf.EventProcessor, *cgcaws.SGS) {

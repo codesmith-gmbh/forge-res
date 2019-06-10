@@ -6,6 +6,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/codesmith-gmbh/cgc/cgcaws"
+	"github.com/codesmith-gmbh/cgc/cgccf"
 	"github.com/codesmith-gmbh/cgc/cgclog"
 	"github.com/codesmith-gmbh/cgc/cgcpg"
 	"github.com/codesmith-gmbh/cgc/cgctesting"
@@ -139,7 +140,7 @@ func TestDatabaseRename(t *testing.T) {
 func mustNewTestProc(config aws.Config) (*proc, *cgcaws.SGS) {
 	ctx := context.TODO()
 	cf := cloudformation.New(config)
-	groupId, err := cgcaws.FetchStackOutputValue(ctx, cf, dbInstanceStack, securityGroupOutputName)
+	groupId, err := cgccf.FetchStackOutputValue(ctx, cf, dbInstanceStack, securityGroupOutputName)
 	if err != nil {
 		panic(err)
 	}
