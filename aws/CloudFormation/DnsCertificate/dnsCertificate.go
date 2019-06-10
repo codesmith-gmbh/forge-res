@@ -15,6 +15,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/route53"
 	"github.com/aws/aws-sdk-go-v2/service/sfn"
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
+	"github.com/codesmith-gmbh/cgc/cgclog"
 	"github.com/codesmith-gmbh/forge/aws/common"
 	"github.com/google/uuid"
 	"github.com/mitchellh/mapstructure"
@@ -26,7 +27,7 @@ import (
 )
 
 var (
-	log             = common.MustSugaredLogger()
+	log             = cgclog.MustSugaredLogger()
 	stateMachineArn = os.Getenv("STATE_MACHINE_ARN")
 )
 
@@ -36,32 +37,55 @@ const (
 )
 
 func main() {
-	defer common.SyncSugaredLogger(log)
-	cfg := common.MustConfig()
-	p := &proc{
+	defer cgclog.SyncSugaredLogger(log)
+	p := newProc()
+	lambda.Start(p.processSNSEvent)
+}
+
+type SNSEventProcessor interface {
+	processSNSEvent(ctx context.Context, event events.SNSEvent) error
+}
+
+type ConstantErrorSNSEventProcessor struct {
+	Error error
+}
+
+func (p *ConstantErrorSNSEventProcessor) processSNSEvent(ctx context.Context, event events.SNSEvent) error {
+	return p.Error
+}
+
+type proc struct {
+	acmService func(properties Properties) (*acm.Client, error)
+	cf         *cloudformation.Client
+	r53        *route53.Client
+	ssm        *ssm.Client
+	step       *sfn.Client
+}
+
+func newProc() SNSEventProcessor {
+	cfg, err := external.LoadDefaultAWSConfig()
+	if err != nil {
+		return &ConstantErrorSNSEventProcessor{Error: err}
+	}
+	return newProcFromConfig(cfg)
+}
+
+func newProcFromConfig(cfg aws.Config) SNSEventProcessor {
+	return &proc{
 		acmService: acmService,
 		cf:         cloudformation.New(cfg),
 		r53:        route53.New(cfg),
 		ssm:        ssm.New(cfg),
 		step:       sfn.New(cfg),
 	}
-	lambda.Start(p.processSNSEvent)
-}
-
-type proc struct {
-	acmService func(properties Properties) (*acm.ACM, error)
-	cf         *cloudformation.CloudFormation
-	r53        *route53.Route53
-	ssm        *ssm.SSM
-	step       *sfn.SFN
 }
 
 type subproc struct {
-	acm  *acm.ACM
-	cf   *cloudformation.CloudFormation
-	r53  *route53.Route53
-	ssm  *ssm.SSM
-	step *sfn.SFN
+	acm  *acm.Client
+	cf   *cloudformation.Client
+	r53  *route53.Client
+	ssm  *ssm.Client
+	step *sfn.Client
 }
 
 // Properties and decoding.
@@ -750,7 +774,7 @@ func (p *subproc) waitForChange(ctx context.Context, changeInfo *route53.ChangeI
 
 // Utilities
 
-func acmService(properties Properties) (*acm.ACM, error) {
+func acmService(properties Properties) (*acm.Client, error) {
 	var cfg aws.Config
 	var err error
 	if len(properties.Region) > 0 {

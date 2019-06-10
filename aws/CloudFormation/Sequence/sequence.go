@@ -3,26 +3,35 @@ package main
 import (
 	"context"
 	"github.com/aws/aws-lambda-go/cfn"
-	"github.com/aws/aws-lambda-go/lambda"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/external"
 	awsssm "github.com/aws/aws-sdk-go-v2/service/ssm"
+	"github.com/codesmith-gmbh/cgc/cgccf"
 	"github.com/codesmith-gmbh/forge/aws/common"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 	"strings"
 )
 
-type proc struct {
-	ssm *awsssm.SSM
+func main() {
+	p := newProc()
+	cgccf.StartEventProcessor(p)
 }
 
-func main() {
+type proc struct {
+	ssm *awsssm.Client
+}
+
+func newProc() cgccf.EventProcessor {
 	cfg, err := external.LoadDefaultAWSConfig()
 	if err != nil {
-		panic(err)
+		return &cgccf.ConstantErrorEventProcessor{Error: err}
 	}
-	p := &proc{ssm: awsssm.New(cfg)}
-	lambda.Start(cfn.LambdaWrap(p.processEvent))
+	return newProcFromConfig(cfg)
+}
+
+func newProcFromConfig(cfg aws.Config) *proc {
+	return &proc{ssm: awsssm.New(cfg)}
 }
 
 type Properties struct {
@@ -46,7 +55,7 @@ func properties(input map[string]interface{}) (Properties, error) {
 	return properties, nil
 }
 
-func (p *proc) processEvent(ctx context.Context, event cfn.Event) (string, map[string]interface{}, error) {
+func (p *proc) ProcessEvent(ctx context.Context, event cfn.Event) (string, map[string]interface{}, error) {
 	properties, err := properties(event.ResourceProperties)
 	if err != nil {
 		return "", nil, err

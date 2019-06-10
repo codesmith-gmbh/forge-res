@@ -2,25 +2,38 @@ package main
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/aws/external"
+	"github.com/codesmith-gmbh/cgc/cgccf"
 	"github.com/codesmith-gmbh/forge/aws/common"
 
 	"github.com/aws/aws-lambda-go/cfn"
-	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
 	awss3 "github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 )
 
-type proc struct {
-	s3 *awss3.S3
-	cf *cloudformation.CloudFormation
+func main() {
+	p := newProc()
+	cgccf.StartEventProcessor(p)
 }
 
-func main() {
-	cfg := common.MustConfig()
-	p := &proc{s3: awss3.New(cfg), cf: cloudformation.New(cfg)}
-	lambda.Start(cfn.LambdaWrap(p.processEvent))
+type proc struct {
+	s3 *awss3.Client
+	cf *cloudformation.Client
+}
+
+func newProc() cgccf.EventProcessor {
+	cfg, err := external.LoadDefaultAWSConfig()
+	if err != nil {
+		return &cgccf.ConstantErrorEventProcessor{Error: err}
+	}
+	return newProcFromConfig(cfg)
+}
+
+func newProcFromConfig(cfg aws.Config) *proc {
+	return &proc{s3: awss3.New(cfg), cf: cloudformation.New(cfg)}
 }
 
 type Properties struct {
@@ -50,7 +63,7 @@ func s3CleanupProperties(input map[string]interface{}) (Properties, error) {
 //    c. the stack is not being delete: it is a NOP as well.
 // 2. Create, Update: In that case, it is a NOP, the physical ID is simply
 //    the logical ID.
-func (p *proc) processEvent(ctx context.Context, event cfn.Event) (string, map[string]interface{}, error) {
+func (p *proc) ProcessEvent(ctx context.Context, event cfn.Event) (string, map[string]interface{}, error) {
 	properties, err := s3CleanupProperties(event.ResourceProperties)
 	if err != nil {
 		return "", nil, err

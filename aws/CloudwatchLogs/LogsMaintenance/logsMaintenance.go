@@ -6,29 +6,58 @@ import (
 	"fmt"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/external"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/sns"
-	"github.com/codesmith-gmbh/forge/aws/common"
+	"github.com/codesmith-gmbh/cgc/cgclog"
 	"github.com/pkg/errors"
 	"os"
 )
 
 var (
 	snsAlertTopicArn             = os.Getenv("SNS_ALERT_TOPIC_ARN")
-	log                          = common.MustSugaredLogger()
+	log                          = cgclog.MustSugaredLogger()
 	DefaultRetentionInDays int64 = 90
 )
 
 func main() {
-	defer common.SyncSugaredLogger(log)
-	cfg := common.MustConfig()
-	p := &proc{sns: sns.New(cfg), ec2: ec2.New(cfg)}
-	lambda.Start(p.processEvent)
+	defer cgclog.SyncSugaredLogger(log)
+	p := newProc()
+	lambda.Start(p.ProcessEvent)
 }
 
-func (p *proc) processEvent(ctx context.Context, event events.CloudWatchEvent) error {
+type EventProcessor interface {
+	ProcessEvent(ctx context.Context, event events.CloudWatchEvent) error
+}
+
+type ConstantErrorEventProcessor struct {
+	Error error
+}
+
+func (p *ConstantErrorEventProcessor) ProcessEvent(ctx context.Context, event events.CloudWatchEvent) error {
+	return p.Error
+}
+
+type proc struct {
+	sns *sns.Client
+	ec2 *ec2.Client
+}
+
+func newProc() EventProcessor {
+	cfg, err := external.LoadDefaultAWSConfig()
+	if err != nil {
+		return &ConstantErrorEventProcessor{Error: err}
+	}
+	return newProcFromConfig(cfg)
+}
+
+func newProcFromConfig(cfg aws.Config) *proc {
+	return &proc{sns: sns.New(cfg), ec2: ec2.New(cfg)}
+}
+
+func (p *proc) ProcessEvent(ctx context.Context, event events.CloudWatchEvent) error {
 	log.Infow("maintenance", "event", event)
 	regions, err := p.ec2.DescribeRegionsRequest(&ec2.DescribeRegionsInput{}).Send(ctx)
 	if err != nil {
@@ -51,18 +80,16 @@ func (p *proc) processEvent(ctx context.Context, event events.CloudWatchEvent) e
 	return nil
 }
 
-type proc struct {
-	sns *sns.SNS
-	ec2 *ec2.EC2
-}
-
 type problem struct {
 	LogGroupName, Error string
 }
 
 func (p *proc) checkLogGroupExpiration(ctx context.Context, region string) []problem {
 	problems := make([]problem, 0, 10)
-	cfg := common.MustConfig(external.WithRegion(region))
+	cfg, err := external.LoadDefaultAWSConfig(external.WithRegion(region))
+	if err != nil {
+		return append(problems, problem{Error: err.Error()})
+	}
 	logs := cloudwatchlogs.New(cfg)
 	grps, err := logs.DescribeLogGroupsRequest(&cloudwatchlogs.DescribeLogGroupsInput{}).Send(ctx)
 	if err != nil {

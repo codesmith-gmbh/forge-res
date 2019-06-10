@@ -1,13 +1,8 @@
 package common
 
 import (
-	"fmt"
 	"github.com/aws/aws-lambda-go/cfn"
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/aws/external"
 	"github.com/pkg/errors"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 	"regexp"
 )
 
@@ -50,34 +45,6 @@ func IsSameRegion(event cfn.Event, oldRegion, region string) bool {
 		return true
 	}
 	return false
-}
-
-// ## Logging functions based on zap
-
-func MustSugaredLogger() *zap.SugaredLogger {
-	config := zap.NewProductionConfig()
-	config.Level = zap.NewAtomicLevelAt(zapcore.DebugLevel)
-	logger, err := config.Build()
-	if err != nil {
-		panic(err)
-	}
-	return logger.Sugar()
-}
-
-func SyncSugaredLogger(logger *zap.SugaredLogger) {
-	if err := logger.Sync(); err != nil {
-		fmt.Printf("could not sync sugared logger: %v", err)
-	}
-}
-
-// ## Standard AWS config
-
-func MustConfig(configs ...external.Config) aws.Config {
-	cfg, err := external.LoadDefaultAWSConfig(configs...)
-	if err != nil {
-		panic(err)
-	}
-	return cfg
 }
 
 // ## Request Type

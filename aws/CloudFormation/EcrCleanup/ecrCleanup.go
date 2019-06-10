@@ -3,29 +3,38 @@ package main
 import (
 	"context"
 	"github.com/aws/aws-lambda-go/cfn"
-	"github.com/aws/aws-lambda-go/lambda"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/external"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
 	awsecr "github.com/aws/aws-sdk-go-v2/service/ecr"
+	"github.com/codesmith-gmbh/cgc/cgccf"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 )
-
-type proc struct {
-	ecr *awsecr.ECR
-	cf  *cloudformation.CloudFormation
-}
 
 // The lambda is started using the AWS lambda go sdk. The handler function
 // does the actual work of creating the log group. Cloudformation sends an
 // event to signify that a resources must be created, updated or deleted.
 func main() {
+	p := newProc()
+	cgccf.StartEventProcessor(p)
+}
+
+type proc struct {
+	ecr *awsecr.Client
+	cf  *cloudformation.Client
+}
+
+func newProc() cgccf.EventProcessor {
 	cfg, err := external.LoadDefaultAWSConfig()
 	if err != nil {
-		panic(err)
+		return &cgccf.ConstantErrorEventProcessor{Error: err}
 	}
-	p := &proc{ecr: awsecr.New(cfg), cf: cloudformation.New(cfg)}
-	lambda.Start(cfn.LambdaWrap(p.processEvent))
+	return newProcFromConfig(cfg)
+}
+
+func newProcFromConfig(cfg aws.Config) *proc {
+	return &proc{ecr: awsecr.New(cfg), cf: cloudformation.New(cfg)}
 }
 
 type Properties struct {
@@ -50,7 +59,7 @@ func ecrCleanupProperties(input map[string]interface{}) (Properties, error) {
 //    3. the stack is not being delete: it is a NOP as well.
 // 2. Create, Update: In that case, it is a NOP, the physical ID is simply
 //    the logical ID of the resource.
-func (p *proc) processEvent(ctx context.Context, event cfn.Event) (string, map[string]interface{}, error) {
+func (p *proc) ProcessEvent(ctx context.Context, event cfn.Event) (string, map[string]interface{}, error) {
 	properties, err := ecrCleanupProperties(event.ResourceProperties)
 	if err != nil {
 		return "", nil, err

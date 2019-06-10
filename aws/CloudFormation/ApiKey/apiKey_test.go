@@ -1,15 +1,16 @@
 package main
 
 import (
-	"github.com/codesmith-gmbh/forge/aws/testCommon"
+	"context"
+	"github.com/codesmith-gmbh/cgc/cgctesting"
 	"testing"
 )
 
 func TestDeletionUnexistingApiKey(t *testing.T) {
-	cfg := testCommon.MustTestConfig()
-	p := newProc(cfg)
+	cfg := cgctesting.MustTestConfig()
+	p := newProcFromConfig(cfg)
 	var apiKeyId = "??????"
-	_, _, err := p.deleteApiKey(apiKeyId)
+	_, _, err := p.deleteApiKey(context.TODO(), apiKeyId)
 	if err != nil {
 		t.Error(err)
 	}

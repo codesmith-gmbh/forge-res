@@ -3,10 +3,11 @@ package main
 import (
 	"context"
 	"github.com/aws/aws-lambda-go/cfn"
-	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/awserr"
+	"github.com/aws/aws-sdk-go-v2/aws/external"
 	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider"
+	"github.com/codesmith-gmbh/cgc/cgccf"
 	"github.com/codesmith-gmbh/forge/aws/common"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
@@ -14,16 +15,23 @@ import (
 )
 
 func main() {
-	cfg := common.MustConfig()
-	p := newProc(cfg)
-	lambda.Start(cfn.LambdaWrap(p.processEvent))
+	p := newProc()
+	cgccf.StartEventProcessor(p)
 }
 
 type proc struct {
-	idp *cognitoidentityprovider.CognitoIdentityProvider
+	idp *cognitoidentityprovider.Client
 }
 
-func newProc(cfg aws.Config) *proc {
+func newProc() cgccf.EventProcessor {
+	cfg, err := external.LoadDefaultAWSConfig()
+	if err != nil {
+		return &cgccf.ConstantErrorEventProcessor{Error: err}
+	}
+	return newProcFromConfig(cfg)
+}
+
+func newProcFromConfig(cfg aws.Config) *proc {
 	return &proc{idp: cognitoidentityprovider.New(cfg)}
 }
 
@@ -41,7 +49,7 @@ func validateProperties(input map[string]interface{}) (Properties, error) {
 	return properties, nil
 }
 
-func (p *proc) processEvent(ctx context.Context, event cfn.Event) (string, map[string]interface{}, error) {
+func (p *proc) ProcessEvent(ctx context.Context, event cfn.Event) (string, map[string]interface{}, error) {
 	properties, err := validateProperties(event.ResourceProperties)
 	if err != nil {
 		return "", nil, err
@@ -57,7 +65,7 @@ func (p *proc) processEvent(ctx context.Context, event cfn.Event) (string, map[s
 }
 
 func (p *proc) createDomain(ctx context.Context, event cfn.Event, properties Properties) (string, map[string]interface{}, error) {
-	var out *cognitoidentityprovider.CreateUserPoolDomainOutput
+	var out *cognitoidentityprovider.CreateUserPoolDomainResponse
 	var err error
 	if properties.CustomDomainConfig.CertificateArn == nil {
 		out, err = p.idp.CreateUserPoolDomainRequest(&cognitoidentityprovider.CreateUserPoolDomainInput{

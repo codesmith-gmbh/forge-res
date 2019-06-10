@@ -1,16 +1,19 @@
 package main
 
 import (
+	"context"
 	"github.com/aws/aws-lambda-go/cfn"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/acm"
 	"github.com/aws/aws-sdk-go-v2/service/route53"
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
-	"github.com/codesmith-gmbh/forge/aws/testCommon"
+	"github.com/codesmith-gmbh/cgc/cgctesting"
 	"github.com/pkg/errors"
 	"strings"
 	"testing"
 )
+
+var ctx = context.TODO()
 
 func TestNeedsNew(t *testing.T) {
 	// 1. correctness
@@ -110,7 +113,7 @@ func TestValidateProperties(t *testing.T) {
 			}},
 		},
 	} {
-		_, err := p.validateProperties(input)
+		_, err := p.validateProperties(ctx, input)
 		if err != nil {
 			t.Errorf("input %d should validate: %v", i, err)
 		}
@@ -155,7 +158,7 @@ func TestValidateProperties(t *testing.T) {
 			"WithCaaRecords": "hello",
 		},
 	} {
-		properties, err := p.validateProperties(input)
+		properties, err := p.validateProperties(ctx, input)
 		if err == nil {
 			t.Errorf("input %d should not validate: %+v", i, properties)
 		}
@@ -189,7 +192,7 @@ func (p *testProc) TestCreationChangeGenerationWithCaa(t *testing.T) {
 	sp := p.mustSuproc()
 	properties := p.mustProperties(t)
 	properties.withCaaRecords = true
-	changes, err := sp.generateChanges(p.certArn, properties, CreateAction, validationSpec(properties))
+	changes, err := sp.generateChanges(ctx, p.certArn, properties, CreateAction, validationSpec(properties))
 	if err != nil {
 		t.Fatal(err, "no changes generated")
 	}
@@ -210,7 +213,7 @@ func (p *testProc) TestCreationChangeGenerationWithoutCaa(t *testing.T) {
 	sp := p.mustSuproc()
 	properties := p.mustProperties(t)
 	properties.withCaaRecords = false
-	changes, err := sp.generateChanges(p.certArn, properties, CreateAction, validationSpec(properties))
+	changes, err := sp.generateChanges(ctx, p.certArn, properties, CreateAction, validationSpec(properties))
 	if err != nil {
 		t.Fatal(err, "no changes generated")
 	}
@@ -231,7 +234,7 @@ func (p *testProc) TestUpdateChangeGenerationCaa(t *testing.T) {
 	sp := p.mustSuproc()
 	properties := p.mustProperties(t)
 	properties.WithCaaRecords = "false"
-	changes, err := sp.generateChanges(p.certArn, properties, CreateAction, caaSpec)
+	changes, err := sp.generateChanges(ctx, p.certArn, properties, CreateAction, caaSpec)
 	if err != nil {
 		t.Fatal(err, "no changes generated")
 	}
@@ -251,7 +254,7 @@ func (p *testProc) TestUpdateChangeGenerationCaa(t *testing.T) {
 func (p *testProc) TestCreationDeletionStandard(t *testing.T) {
 	sp := p.mustSuproc()
 	properties := p.mustProperties(t)
-	err := sp.createRecordSetGroup(p.certArn, properties)
+	err := sp.createRecordSetGroup(ctx, p.certArn, properties)
 	if err != nil {
 		t.Fatalf("could not create the record set group: %v", err)
 	}
@@ -261,7 +264,7 @@ func (p *testProc) TestCreationDeletionStandard(t *testing.T) {
 func (p *testProc) TestCreationDeletionFailover(t *testing.T) {
 	sp := p.mustSuproc()
 	properties := p.mustProperties(t)
-	err := sp.createRecordSetGroup(p.certArn, properties)
+	err := sp.createRecordSetGroup(ctx, p.certArn, properties)
 	if err != nil {
 		t.Fatalf("could not create the record set group: %v", err)
 	}
@@ -275,7 +278,7 @@ func (p *testProc) TestCreationDeletionFailover(t *testing.T) {
 func (p *testProc) TestFaultyResourceDeletion(t *testing.T) {
 	properties := p.mustProperties(t)
 	sp := p.mustSuproc()
-	err := sp.deleteRecordSetGroup(p.certArn, properties)
+	err := sp.deleteRecordSetGroup(ctx, p.certArn, properties)
 	if err != nil {
 		t.Errorf("could not deleting faulty resources")
 	}
@@ -288,25 +291,25 @@ func TestSnsMessageIdParameter(t *testing.T) {
 	p := mustTestProc()
 	sp := p.mustSuproc()
 	defer sp.mustDeleteSnsMessageIdParameter(messageIdParameterEvent)
-	err := sp.deleteSnsMessageIdParameter(messageIdParameterEvent)
+	err := sp.deleteSnsMessageIdParameter(ctx, messageIdParameterEvent)
 	if err != nil {
 		t.Error(err, "delete should not fail on inexisting parameter")
 	}
-	skip, err := sp.shouldSkipMessage(messageIdParameterEvent, "1")
+	skip, err := sp.shouldSkipMessage(ctx, messageIdParameterEvent, "1")
 	if err != nil {
 		t.Error(err)
 	}
 	if skip {
 		t.Error("should not skip for message 1")
 	}
-	skip, err = sp.shouldSkipMessage(messageIdParameterEvent, "1")
+	skip, err = sp.shouldSkipMessage(ctx, messageIdParameterEvent, "1")
 	if err != nil {
 		t.Error(err)
 	}
 	if !skip {
 		t.Error("should skip for message 1")
 	}
-	skip, err = sp.shouldSkipMessage(messageIdParameterEvent, "2")
+	skip, err = sp.shouldSkipMessage(ctx, messageIdParameterEvent, "2")
 	if err != nil {
 		t.Error(err)
 	}
@@ -316,7 +319,7 @@ func TestSnsMessageIdParameter(t *testing.T) {
 }
 
 func (p *subproc) mustDeleteSnsMessageIdParameter(event cfn.Event) {
-	err := p.deleteSnsMessageIdParameter(messageIdParameterEvent)
+	err := p.deleteSnsMessageIdParameter(ctx, messageIdParameterEvent)
 	if err != nil {
 		panic(err)
 	}
@@ -335,9 +338,9 @@ type testProc struct {
 }
 
 func mustTestProc() *testProc {
-	cfg := testCommon.MustTestConfig()
+	cfg := cgctesting.MustTestConfig()
 	cm := acm.New(cfg)
-	acmService := func(_ Properties) (*acm.ACM, error) {
+	acmService := func(_ Properties) (*acm.Client, error) {
 		return cm, nil
 	}
 	return &testProc{proc: proc{r53: route53.New(cfg), acmService: acmService, ssm: ssm.New(cfg)}, cfg: cfg}
@@ -349,7 +352,7 @@ func (p *testProc) mustProperties(t *testing.T) Properties {
 		DomainName:              "test-forge.codesmith.ch",
 		SubjectAlternativeNames: []string{"test-forge-san.codesmith.ch"},
 	}
-	err := p.fetchHostedZoneData(&properties)
+	err := p.fetchHostedZoneData(ctx, &properties)
 	if err != nil {
 		t.Fatal(err, "could not fetch hosted zone data")
 	}
@@ -365,7 +368,7 @@ func (p *testProc) mustSuproc() *subproc {
 }
 
 func ensureTestCertificateArn(sp *subproc, properties Properties) (string, error) {
-	certificateArn, err := sp.createCertificateAndTags(properties)
+	certificateArn, err := sp.createCertificateAndTags(ctx, properties)
 	if err != nil {
 		return "", errors.Wrapf(err, "could not create certificate for %+v", properties)
 	}
@@ -373,7 +376,7 @@ func ensureTestCertificateArn(sp *subproc, properties Properties) (string, error
 }
 
 func (p *subproc) tearDownCreation(t *testing.T, certificateArn string, properties Properties) {
-	err := p.deleteRecordSetGroup(certificateArn, properties)
+	err := p.deleteRecordSetGroup(ctx, certificateArn, properties)
 	if err != nil {
 		t.Errorf("could not delete the records: %v", err)
 	}
@@ -382,7 +385,7 @@ func (p *subproc) tearDownCreation(t *testing.T, certificateArn string, properti
 func (p *subproc) deleteTestCertificate(t *testing.T, certificateArn string) {
 	_, err := p.acm.DeleteCertificateRequest(&acm.DeleteCertificateInput{
 		CertificateArn: &certificateArn,
-	}).Send()
+	}).Send(ctx)
 	if err != nil {
 		t.Fatalf("could not delete the certificate %s due to err %s", certificateArn, err)
 	}
@@ -409,9 +412,9 @@ func hasCaaRecordFor(changes []route53.Change, domain string) bool {
 }
 
 func (p *subproc) deleteOneCaaRecord(certificateArn string, properties Properties) error {
-	changes, err := p.generateChanges(certificateArn, properties, DeleteAction, caaSpec)
+	changes, err := p.generateChanges(ctx, certificateArn, properties, DeleteAction, caaSpec)
 	if err != nil {
 		return err
 	}
-	return p.deleteChanges(properties.HostedZoneId, changes[0:1])
+	return p.deleteChanges(ctx, properties.HostedZoneId, changes[0:1])
 }

@@ -8,7 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/external"
 	"github.com/aws/aws-sdk-go-v2/service/acm"
-	"github.com/codesmith-gmbh/forge/aws/common"
+	"github.com/codesmith-gmbh/cgc/cgclog"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 	"regexp"
@@ -16,14 +16,14 @@ import (
 
 const MaxRoundCount = 60
 
-var log = common.MustSugaredLogger()
+var log = cgclog.MustSugaredLogger()
 
 type proc struct {
-	acmService func(certificateArn string) (*acm.ACM, error)
+	acmService func(certificateArn string) (*acm.Client, error)
 }
 
 func main() {
-	defer common.SyncSugaredLogger(log)
+	defer cgclog.SyncSugaredLogger(log)
 	p := &proc{acmService: acmService}
 	lambda.Start(p.processEvent)
 }
@@ -112,7 +112,7 @@ func (p *proc) checkCertificate(ctx context.Context, event cfn.Event, round int)
 // [ACM sdk v2](https://github.com/aws/aws-sdk-go-v2/tree/master/service/acm)
 // to create the certificate. The client is created with the default
 // credential chain loader and with the region of the certificate
-func acmService(certificateArn string) (*acm.ACM, error) {
+func acmService(certificateArn string) (*acm.Client, error) {
 	var cfg aws.Config
 	region, err := certificateRegion(certificateArn)
 	if err != nil {

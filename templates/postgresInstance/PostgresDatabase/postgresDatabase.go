@@ -2,24 +2,22 @@ package main
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"github.com/aws/aws-lambda-go/cfn"
-	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/external"
+	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
+	"github.com/codesmith-gmbh/cgc/cgcaws"
+	"github.com/codesmith-gmbh/cgc/cgccf"
+	"github.com/codesmith-gmbh/cgc/cgclog"
+	"github.com/codesmith-gmbh/cgc/cgcpg"
 	"github.com/jackc/pgx"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
-	"io/ioutil"
 	"os"
-	"path"
 )
 
 const (
@@ -27,30 +25,60 @@ const (
 )
 
 var (
-	log                  = MustSugaredLogger()
-	dbInstanceIdentifier = os.Getenv("DB_INSTANCE_IDENTIFIER")
-	secretName           = "codesmith-forge--rds--" + dbInstanceIdentifier
+	log = cgclog.MustSugaredLogger()
 )
 
 type proc struct {
-	smg *secretsmanager.SecretsManager
+	smg                           *secretsmanager.Client
+	dbInstanceIdentifier, groupId string
 }
 
-func newProc(cfg aws.Config) *proc {
+func newProc(cfg aws.Config, dbInstanceIdentifier, groupId string) *proc {
 	return &proc{
-		smg: secretsmanager.New(cfg),
+		smg:                  secretsmanager.New(cfg),
+		dbInstanceIdentifier: dbInstanceIdentifier,
+		groupId:              groupId,
 	}
 }
 
 func main() {
-	defer SyncSugaredLogger(log)
-	log.Debugw("", "dbInstanceIdentifier", dbInstanceIdentifier)
-	if dbInstanceIdentifier == "" {
-		panic("DB_INSTANCE_IDENTIFIER is not defined")
+	defer cgclog.SyncSugaredLogger(log)
+	dbInstanceIdentifier := os.Getenv("DB_INSTANCE_IDENTIFIER")
+	groupId := os.Getenv("DB_INSTANCE_SECURITY_GROUP")
+	ingressDescription := os.Getenv("AWS_LAMBDA_LOG_STREAM_NAME")
+	p, sgs := initLambda(dbInstanceIdentifier, groupId, ingressDescription)
+	if sgs != nil {
+		//noinspection GoUnhandledErrorResult
+		defer sgs.EnsureDescribedIngressRevoked(context.TODO(), groupId, ingressDescription)
 	}
-	cfg := MustConfig()
-	p := newProc(cfg)
-	lambda.Start(cfn.LambdaWrap(p.processEvent))
+	cgccf.StartEventProcessor(p)
+}
+
+func initLambda(dbInstanceIdentifier, groupId, ingressDescription string) (cgccf.EventProcessor, *cgcaws.SGS) {
+	if dbInstanceIdentifier == "" {
+		return constantErrorProcessorWithMsg("dbInstanceIdentifier not defined")
+	}
+	if groupId == "" {
+		return constantErrorProcessorWithMsg("groupId not defined")
+	}
+	if ingressDescription == "" {
+		return constantErrorProcessorWithMsg("ingressDescription not defined")
+	}
+	cfg, err := external.LoadDefaultAWSConfig()
+	if err != nil {
+		return &cgccf.ConstantErrorEventProcessor{Error: err}, nil
+	}
+	ec2Client := ec2.New(cfg)
+	sgs := cgcaws.NewAwsSecurityGroupService(ec2Client)
+	err = sgs.OpenSecurityGroup(context.TODO(), groupId, ingressDescription)
+	if err != nil {
+		return &cgccf.ConstantErrorEventProcessor{Error: err}, sgs
+	}
+	return newProc(cfg, dbInstanceIdentifier, groupId), sgs
+}
+
+func constantErrorProcessorWithMsg(message string) (cgccf.EventProcessor, *cgcaws.SGS) {
+	return &cgccf.ConstantErrorEventProcessor{Error: errors.New(message)}, nil
 }
 
 type Properties struct {
@@ -69,7 +97,7 @@ func postgresDatabaseProperties(input map[string]interface{}) (Properties, error
 	return properties, nil
 }
 
-func (p *proc) processEvent(ctx context.Context, event cfn.Event) (string, map[string]interface{}, error) {
+func (p *proc) ProcessEvent(ctx context.Context, event cfn.Event) (string, map[string]interface{}, error) {
 	log.Debugw("processing event", "event", event)
 	properties, err := postgresDatabaseProperties(event.ResourceProperties)
 	if err != nil {
@@ -147,6 +175,7 @@ type DbInstanceInfo struct {
 }
 
 func (p *proc) dbInstanceInfo(ctx context.Context, properties Properties) (DbInstanceInfo, error) {
+	secretName := p.secretName()
 	var dbInstanceInfo DbInstanceInfo
 	secret, err := p.smg.GetSecretValueRequest(&secretsmanager.GetSecretValueInput{
 		SecretId: &secretName,
@@ -174,6 +203,10 @@ func (p *proc) dbInstanceInfo(ctx context.Context, properties Properties) (DbIns
 	return dbInstanceInfo, nil
 }
 
+func (p *proc) secretName() string {
+	return "codesmith-forge--rds--" + p.dbInstanceIdentifier
+}
+
 func (p *proc) connect(ctx context.Context, properties Properties, database string) (*pgx.Conn, error) {
 	dbInstanceInfo, err := p.dbInstanceInfo(ctx, properties)
 	if err != nil {
@@ -183,75 +216,22 @@ func (p *proc) connect(ctx context.Context, properties Properties, database stri
 		"host", dbInstanceInfo.Host,
 		"port", dbInstanceInfo.Port,
 		"user", dbInstanceInfo.Username)
-	tlsConfig, err := loadTlsConfig(dbInstanceInfo.Host)
-	if err != nil {
-		return nil, err
-	}
-	log.Debugw("tls config",
-		"root cert CA count", len(tlsConfig.RootCAs.Subjects()))
 	config := pgx.ConnConfig{
-		Host:      dbInstanceInfo.Host,
-		Port:      dbInstanceInfo.Port,
-		User:      dbInstanceInfo.Username,
-		Database:  database,
-		Password:  dbInstanceInfo.Password,
-		TLSConfig: tlsConfig,
+		Host:     dbInstanceInfo.Host,
+		Port:     dbInstanceInfo.Port,
+		User:     dbInstanceInfo.Username,
+		Database: database,
+		Password: dbInstanceInfo.Password,
+	}
+	tlsConfigOption := &cgcpg.TlsConfigOption{Host: dbInstanceInfo.Host}
+	if err := tlsConfigOption.Configure(&config); err != nil {
+		return nil, err
 	}
 	conn, err := pgx.Connect(config)
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not connect to the database %s", dbInstanceIdentifier)
+		return nil, errors.Wrapf(err, "could not connect to the database %s", p.dbInstanceIdentifier)
 	}
 	return conn, nil
-}
-
-const rootCertificateFile = "rds-ca-2015-root.pem"
-
-func loadTlsConfig(host string) (*tls.Config, error) {
-	certPool := x509.NewCertPool()
-	lambdaRootPath := os.Getenv("LAMBDA_TASK_ROOT")
-	var certificateFile string
-	if lambdaRootPath == "" {
-		certificateFile = rootCertificateFile
-	} else {
-		certificateFile = path.Join(lambdaRootPath, rootCertificateFile)
-	}
-	pemCert, err := ioutil.ReadFile(certificateFile)
-	if err != nil {
-		return nil, errors.Wrapf(err, "could not read the root certificate file %s", rootCertificateFile)
-	}
-	certPool.AppendCertsFromPEM(pemCert)
-	return &tls.Config{
-		RootCAs:    certPool,
-		ServerName: host,
-	}, nil
-}
-
-// ## Logging functions based on zap
-
-func MustSugaredLogger() *zap.SugaredLogger {
-	config := zap.NewProductionConfig()
-	config.Level = zap.NewAtomicLevelAt(zapcore.DebugLevel)
-	logger, err := config.Build()
-	if err != nil {
-		panic(err)
-	}
-	return logger.Sugar()
-}
-
-func SyncSugaredLogger(logger *zap.SugaredLogger) {
-	if err := logger.Sync(); err != nil {
-		fmt.Printf("could not sync sugared logger: %v", err)
-	}
-}
-
-// ## Standard AWS config
-
-func MustConfig(configs ...external.Config) aws.Config {
-	cfg, err := external.LoadDefaultAWSConfig(configs...)
-	if err != nil {
-		panic(err)
-	}
-	return cfg
 }
 
 // ## Request Type

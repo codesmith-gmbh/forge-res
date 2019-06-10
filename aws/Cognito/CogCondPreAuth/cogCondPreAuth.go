@@ -15,8 +15,9 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/aws/external"
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
-	"github.com/codesmith-gmbh/forge/aws/common"
+	"github.com/codesmith-gmbh/cgc/cgclog"
 	"github.com/pkg/errors"
 	"strings"
 )
@@ -36,25 +37,44 @@ type Settings struct {
 
 var (
 	zero = CognitoEventUserPoolsPreAuth{}
-	log  = common.MustSugaredLogger()
+	log  = cgclog.MustSugaredLogger()
 )
 
 func main() {
-	defer common.SyncSugaredLogger(log)
-	cfg := common.MustConfig()
-	p := newProc(cfg)
-	lambda.Start(p.processEvent)
+	defer cgclog.SyncSugaredLogger(log)
+	p := newProc()
+	lambda.Start(p.ProcessEvent)
+}
+
+type EventProcessor interface {
+	ProcessEvent(ctx context.Context, event CognitoEventUserPoolsPreAuth) (CognitoEventUserPoolsPreAuth, error)
+}
+
+type ConstantErrorEventProcessor struct {
+	Error error
+}
+
+func (p *ConstantErrorEventProcessor) ProcessEvent(ctx context.Context, event CognitoEventUserPoolsPreAuth) (CognitoEventUserPoolsPreAuth, error) {
+	return event, p.Error
 }
 
 type proc struct {
-	ssm *ssm.SSM
+	ssm *ssm.Client
 }
 
-func newProc(cfg aws.Config) *proc {
+func newProc() EventProcessor {
+	cfg, err := external.LoadDefaultAWSConfig()
+	if err != nil {
+		return &ConstantErrorEventProcessor{Error: err}
+	}
+	return newProcFromConfig(cfg)
+}
+
+func newProcFromConfig(cfg aws.Config) *proc {
 	return &proc{ssm: ssm.New(cfg)}
 }
 
-func (p *proc) processEvent(ctx context.Context, event CognitoEventUserPoolsPreAuth) (CognitoEventUserPoolsPreAuth, error) {
+func (p *proc) ProcessEvent(ctx context.Context, event CognitoEventUserPoolsPreAuth) (CognitoEventUserPoolsPreAuth, error) {
 	log.Debugw("received pre auth event", "event", event)
 
 	// 1. we fetch the Settings for the given user pool

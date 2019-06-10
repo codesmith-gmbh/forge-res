@@ -3,11 +3,12 @@ package main
 import (
 	"context"
 	"github.com/aws/aws-lambda-go/cfn"
-	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/awserr"
+	"github.com/aws/aws-sdk-go-v2/aws/external"
 	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider"
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
+	"github.com/codesmith-gmbh/cgc/cgccf"
 	"github.com/codesmith-gmbh/forge/aws/common"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
@@ -54,21 +55,28 @@ func (p *proc) validateProperties(ctx context.Context, input map[string]interfac
 }
 
 func main() {
-	cfg := common.MustConfig()
-	p := newProc(cfg)
-	lambda.Start(cfn.LambdaWrap(p.processEvent))
+	p := newProc()
+	cgccf.StartEventProcessor(p)
 }
 
 type proc struct {
-	idp *cognitoidentityprovider.CognitoIdentityProvider
-	ssm *ssm.SSM
+	idp *cognitoidentityprovider.Client
+	ssm *ssm.Client
 }
 
-func newProc(cfg aws.Config) *proc {
+func newProc() cgccf.EventProcessor {
+	cfg, err := external.LoadDefaultAWSConfig()
+	if err != nil {
+		return &cgccf.ConstantErrorEventProcessor{Error: err}
+	}
+	return newProcFromConfig(cfg)
+}
+
+func newProcFromConfig(cfg aws.Config) *proc {
 	return &proc{idp: cognitoidentityprovider.New(cfg), ssm: ssm.New(cfg)}
 }
 
-func (p *proc) processEvent(ctx context.Context, event cfn.Event) (string, map[string]interface{}, error) {
+func (p *proc) ProcessEvent(ctx context.Context, event cfn.Event) (string, map[string]interface{}, error) {
 	properties, providerDetails, err := p.validateProperties(ctx, event.ResourceProperties)
 	if err != nil {
 		return "", nil, err
