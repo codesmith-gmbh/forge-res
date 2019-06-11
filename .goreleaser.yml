@@ -7,67 +7,71 @@ before:
 
 builds:
   - main: aws/CloudFormation/ApiKey/apiKey.go
-    binary: ApiKey/apiKey
+    binary: apiKey
     goos: [linux]
     goarch: [amd64]
   - main: aws/CloudFormation/CogCondPreAuthSettings/cogCondPreAuthSettings.go
-    binary: CogCondPreAuthSettings/cogCondPreAuthSettings
+    binary: cogCondPreAuthSettings
     goos: [linux]
     goarch: [amd64]
   - main: aws/CloudFormation/CognitoIdentityProvider/cognitoIdentityProvider.go
-    binary: CognitoIdentityProvider/cognitoIdentityProvider
+    binary: cognitoIdentityProvider
     goos: [linux]
     goarch: [amd64]
   - main: aws/CloudFormation/CognitoUserPoolClientSettings/cognitoUserPoolClientSettings.go
-    binary: CognitoUserPoolClientSettings/cognitoUserPoolClientSettings
+    binary: cognitoUserPoolClientSettings
     goos: [linux]
     goarch: [amd64]
   - main: aws/CloudFormation/CognitoUserPoolDomain/cognitoUserPoolDomain.go
-    binary: CognitoUserPoolDomain/cognitoUserPoolDomain
+    binary: cognitoUserPoolDomain
+    goos: [linux]
+    goarch: [amd64]
+  - main: aws/CloudFormation/DbInstanceResourceId/dbInstanceResourceId.go
+    binary: dbInstanceResourceId
     goos: [linux]
     goarch: [amd64]
   - main: aws/CloudFormation/DnsCertificate/dnsCertificate.go
-    binary: DnsCertificate/dnsCertificate
+    binary: dnsCertificate
     goos: [linux]
     goarch: [amd64]
   - main: aws/CloudFormation/DnsCertificateCheck/dnsCertificateCheck.go
-    binary: DnsCertificateCheck/dnsCertificateCheck
+    binary: dnsCertificateCheck
     goos: [linux]
     goarch: [amd64]
   - main: aws/CloudFormation/EcrCleanup/ecrCleanup.go
-    binary: EcrCleanup/ecrCleanup
+    binary: ecrCleanup
     goos: [linux]
     goarch: [amd64]
   - main: aws/CloudFormation/ForgeResources/forgeResources.go
-    binary: ForgeResources/forgeResources
+    binary: forgeResources
     goos: [linux]
     goarch: [amd64]
   - main: aws/CloudFormation/ListenerRuleSwapper/listenerRuleSwapper.go
-    binary: ListenerRuleSwapper/listenerRuleSwapper
+    binary: listenerRuleSwapper
     goos: [linux]
     goarch: [amd64]
   - main: aws/CloudFormation/S3Cleanup/s3Cleanup.go
-    binary: S3Cleanup/s3Cleanup
+    binary: s3Cleanup
     goos: [linux]
     goarch: [amd64]
   - main: aws/CloudFormation/Sequence/sequence.go
-    binary: Sequence/sequence
+    binary: sequence
     goos: [linux]
     goarch: [amd64]
   - main: aws/CloudFormation/SequenceValue/sequenceValue.go
-    binary: SequenceValue/sequenceValue
+    binary: sequenceValue
     goos: [linux]
     goarch: [amd64]
   - main: aws/CloudwatchLogs/LogsMaintenance/logsMaintenance.go
-    binary: LogsMaintenance/logsMaintenance
+    binary: logsMaintenance
     goos: [linux]
     goarch: [amd64]
   - main: aws/CodeCommit/PipelineTrigger/pipelineTrigger.go
-    binary: PipelineTrigger/pipelineTrigger
+    binary: pipelineTrigger
     goos: [linux]
     goarch: [amd64]
   - main: aws/Cognito/CogCondPreAuth/cogCondPreAuth.go
-    binary: CogCondPreAuth/cogCondPreAuth
+    binary: cogCondPreAuth
     goos: [linux]
     goarch: [amd64]
 
