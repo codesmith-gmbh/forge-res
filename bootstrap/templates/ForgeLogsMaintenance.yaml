@@ -20,7 +20,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       AutoPublishAlias: live
-      CodeUri: ../../dist/linux_amd64/LogsMaintenance
+      CodeUri: ../../dist/logsMaintenance_linux_amd64
       Environment:
         Variables:
           SNS_ALERT_TOPIC_ARN: !Ref AlertTopic

@@ -20,7 +20,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       AutoPublishAlias: live
-      CodeUri: ../../dist/linux_amd64/ApiKey
+      CodeUri: ../../dist/apiKey_linux_amd64
       Description: Cloudformation Custom Resource for apg api keys for Cloudfront.
       Handler: apiKey
       MemorySize: 128
@@ -52,7 +52,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       AutoPublishAlias: live
-      CodeUri: ../../dist/linux_amd64/CogCondPreAuthSettings
+      CodeUri: ../../dist/cogCondPreAuthSettings_linux_amd64
       Description: Cloudformation Custom Resource for CogCondPreAuthSettings
       Handler: cogCondPreAuthSettings
       MemorySize: 128
@@ -82,7 +82,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       AutoPublishAlias: live
-      CodeUri: ../../dist/linux_amd64/CognitoUserPoolClientSettings
+      CodeUri: ../../dist/cognitoUserPoolClientSettings_linux_amd64
       Description: Cloudformation Custom Resource for configuring a Cognito User Pool Client.
       Handler: cognitoUserPoolClientSettings
       MemorySize: 128
@@ -106,7 +106,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       AutoPublishAlias: live
-      CodeUri: ../../dist/linux_amd64/CognitoUserPoolDomain
+      CodeUri: ../../dist/cognitoUserPoolDomain_linux_amd64
       Description: Cloudformation Custom Resource for Cognito User Pool Domain
       Handler: cognitoUserPoolDomain
       MemorySize: 128
@@ -132,7 +132,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       AutoPublishAlias: live
-      CodeUri: ../../dist/linux_amd64/CognitoIdentityProvider
+      CodeUri: ../../dist/cognitoIdentityProvider_linux_amd64
       Description: Cloudformation Custom Resource for cognito user pool idendity provider
       Handler: cognitoIdentityProvider
       MemorySize: 128
@@ -163,13 +163,38 @@ Resources:
       Action: lambda:InvokeFunction
       FunctionName: !GetAtt CognitoIdentityProviderFunction.Arn
       Principal: cloudformation.amazonaws.com
+  DbInstanceResourceIdFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      AutoPublishAlias: live
+      CodeUri: ../../dist/dbInstanceResourceId_linux_amd64
+      Description: Cloudformation Custom Resource to retrieve the resource id of a rds database instance
+      Handler: dbInstanceResourceId
+      MemorySize: 128
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Sid: rds
+              Effect: Allow
+              Action:
+                - "rds:DescribeDBInstances"
+              Resource:
+                - "*"
+      Runtime: go1.x
+      Timeout: 300
+  DbInstanceResourceIdPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt DbInstanceResourceIdFunction.Arn
+      Principal: cloudformation.amazonaws.com
   DnsCertificateSNSTopic:
     Type: AWS::SNS::Topic
   DnsCertificateFunction:
     Type: AWS::Serverless::Function
     Properties:
       AutoPublishAlias: live
-      CodeUri: ../../dist/linux_amd64/DnsCertificate
+      CodeUri: ../../dist/dnsCertificate_linux_amd64
       Description: Cloudformation Custom Resource for SSL Certificates validated via DNS.
       Environment:
         Variables:
@@ -230,7 +255,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       AutoPublishAlias: live
-      CodeUri: ../../dist/linux_amd64/DnsCertificateCheck
+      CodeUri: ../../dist/dnsCertificateCheck_linux_amd64
       Description: Function to check a certificate inside a step functions state machine
       Handler: dnsCertificateCheck
       MemorySize: 128
@@ -314,7 +339,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       AutoPublishAlias: live
-      CodeUri: ../../dist/linux_amd64/EcrCleanup
+      CodeUri: ../../dist/ecrCleanup_linux_amd64
       Description: Cloudformation Custom Resource for ECR Cleaning
       Handler: ecrCleanup
       MemorySize: 128
@@ -339,7 +364,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       AutoPublishAlias: live
-      CodeUri: ../../dist/linux_amd64/ForgeResources
+      CodeUri: ../../dist/forgeResources_linux_amd64
       Handler: forgeResources
       MemorySize: 512
       Runtime: go1.x
@@ -360,7 +385,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       AutoPublishAlias: live
-      CodeUri: ../../dist/linux_amd64/ListenerRuleSwapper
+      CodeUri: ../../dist/listenerRuleSwapper_linux_amd64
       Description: Cloudformation Custom Resource to swap 2 rules during the update of a stack.
       Handler: listenerRuleSwapper
       MemorySize: 128
@@ -392,7 +417,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       AutoPublishAlias: live
-      CodeUri: ../../dist/linux_amd64/S3Cleanup
+      CodeUri: ../../dist/s3Cleanup_linux_amd64
       Description: Cloudformation Custom Resource for S3 Bucket Cleaning
       Handler: s3Cleanup
       MemorySize: 128
@@ -417,7 +442,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       AutoPublishAlias: live
-      CodeUri: ../../dist/linux_amd64/Sequence
+      CodeUri: ../../dist/sequence_linux_amd64
       Description: Cloudformation Custom Resource for Sequences
       Handler: sequence
       MemorySize: 128
@@ -447,7 +472,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       AutoPublishAlias: live
-      CodeUri: ../../dist/linux_amd64/SequenceValue
+      CodeUri: ../../dist/sequenceValue_linux_amd64
       Description: Cloudformation Custom Resource for Sequence Values
       Handler: sequenceValue
       MemorySize: 128
@@ -477,7 +502,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       AutoPublishAlias: live
-      CodeUri: ../../dist/linux_amd64/PipelineTrigger
+      CodeUri: ../../dist/pipelineTrigger_linux_amd64
       Runtime: go1.x
       Handler: pipelineTrigger
       Policies:
@@ -506,7 +531,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       AutoPublishAlias: live
-      CodeUri: ../../dist/linux_amd64/CogCondPreAuth
+      CodeUri: ../../dist/cogCondPreAuth_linux_amd64
       Handler: cogCondPreAuth
       Policies:
         - Version: '2012-10-17'
@@ -553,6 +578,10 @@ Outputs:
     Value: !GetAtt CognitoIdentityProviderFunction.Arn
     Export:
       Name: !Sub "${AWS::StackName}-CognitoIdentityProvider"
+  DbInstanceResourceId:
+    Value: !GetAtt DbInstanceResourceIdFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-DbInstanceResourceId"
   DnsCertificate:
     Value: !Ref DnsCertificateSNSTopic
     Export:
