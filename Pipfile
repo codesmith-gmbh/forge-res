@@ -8,6 +8,9 @@ boto3 = "*"
 
 [packages]
 crhelper = "*"
+python-box = "*"
+schema = "*"
+fastjsonschema = "*"
 
 [requires]
 python_version = "3.7"

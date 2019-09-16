@@ -45,9 +45,10 @@ function deployForgeResources () {
     PYTHON_LAMBDA_LAYER_KEY=.forgeResources/${VERSION}/layer.zip
 
     rm -fr dist
-    mkdir dist
+    mkdir -p dist/layer/python/aws/common
     pipenv lock -r > dist/requirements.txt
     pipenv run pip install -t dist/layer/python -r dist/requirements.txt
+    cp -R aws/common dist/layer/python/aws/common
 
     cd dist/layer
     zip -r layer.zip .

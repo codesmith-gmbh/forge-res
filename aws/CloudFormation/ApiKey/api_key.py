@@ -1,8 +1,9 @@
-import boto3
-from botocore.exceptions import ClientError
-from crhelper import CfnResource
 import logging
 from typing import NamedTuple
+
+import boto3
+from crhelper import CfnResource
+from aws.common.cfn import physical_resource_id, resource_properties
 
 helper = CfnResource()
 logger = logging.getLogger(__name__)
@@ -22,10 +23,10 @@ class Properties(NamedTuple):
 def properties(event):
     try:
         p = Properties(
-            physical_resource_id=event.get('PhysicalResourceId'),
+            physical_resource_id=physical_resource_id(event),
             logical_resource_id=event['LogicalResourceId'],
             stack_id=event['StackId'],
-            ordinal=event['ResourceProperties']['Ordinal']
+            ordinal=resource_properties(event)['Ordinal']
         )
     except KeyError as e:
         raise ValueError('cloudformation event not valid') from e
@@ -43,7 +44,7 @@ def create_update(event, _):
     stack_id = p.stack_id
     try:
         stack = cf.describe_stacks(StackName=stack_id)
-    except ClientError as e:
+    except apg.exceptions.ClientError as e:
         raise RuntimeError(f'Cannot retrieve the stack name for {stack_id}') from e
 
     stack_name = stack['Stacks'][0]['StackName']
@@ -56,7 +57,7 @@ def create_update(event, _):
             name=key_name,
             enabled=True,
         )
-    except ClientError as e:
+    except apg.exceptions.ClientError as e:
         raise RuntimeError(f'Cannot create the Api Key with name {key_name}') from e
 
     helper.Data.update({'Secret': key['value']})
@@ -77,9 +78,6 @@ def delete_api_key(key_id):
         )
     except apg.exceptions.NotFoundException:
         pass
-    except Exception as e:
-        raise e
-
     return key_id
 
 
