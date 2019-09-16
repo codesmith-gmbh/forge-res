@@ -12,9 +12,8 @@ To create a new api key, add the following resource to your template
 
 ```yaml
 MyCfApiKey:
-  Type: Custom::ApiKey
+  Type: Forge::ApiGateway::ApiKey
   Properties:
-    ServiceToken: !Import ForgeResources-ApiKey
     Ordinal: <number>
 ```
 
