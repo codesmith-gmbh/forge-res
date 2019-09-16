@@ -6,6 +6,8 @@ Parameters:
     Type: String
   SsmKmsKeyArn:
     Type: String
+  PythonLambdaLayerArn:
+    Type: String
 Resources:
   # 1. S3 Release Cleanup
   S3ReleaseCleanup:
@@ -20,9 +22,11 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       AutoPublishAlias: live
-      CodeUri: ../../dist/apiKey_linux_amd64
+      CodeUri: ../../aws/CloudFormation/ApiKey
       Description: Cloudformation Custom Resource for apg api keys for Cloudfront.
-      Handler: apiKey
+      Handler: api_key.handler
+      Layers:
+        - !Ref PythonLambdaLayerArn
       MemorySize: 128
       Policies:
         - Version: "2012-10-17"
@@ -40,7 +44,7 @@ Resources:
                 - "cloudformation:DescribeStacks"
               Resource:
                 - "*"
-      Runtime: go1.x
+      Runtime: python3.7
       Timeout: 300
   ApiKeyPermission:
     Type: AWS::Lambda::Permission

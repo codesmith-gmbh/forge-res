@@ -10,11 +10,7 @@ echo "Version: ${VERSION}"
 
 CLOUDFORMATION_ROLE_ARN=$(aws --region us-east-1 cloudformation describe-stacks --stack-name ForgeBootstrap | jq -r '.Stacks[0].Outputs | map(select(.OutputKey=="BootstrapCloudFormationRoleArn"))[0].OutputValue')
 FORGE_DOMAIN_NAME=$(aws --region us-east-1 cloudformation describe-stacks --stack-name ForgeBootstrap | jq -r '.Stacks[0].Outputs | map(select(.OutputKey=="ForgeDomainName"))[0].OutputValue')
-
-function goArtefacts () {
-    cd ${SCRIPT_DIR}/..
-    goreleaser --rm-dist --snapshot
-}
+PYTHON_LAMBDA_LAYER_NAME=ForgeResourcesLayer
 
 function deployForgeIam () {
     echo "# Deploying ForgeIam in the ${1} region"
@@ -43,9 +39,24 @@ function deployForgeBuckets () {
 }
 
 function deployForgeResources () {
-    echo "# Deploying ForgeResources in the ${1} region"
+    echo "# Create Python lambda layer in the ${1} region"
     cd ${SCRIPT_DIR}/..
     S3_BUCKET=$(aws --region ${1} cloudformation describe-stacks --stack-name ForgeBuckets | jq -r '.Stacks[0].Outputs | map(select(.OutputKey=="ArtifactsBucketName"))[0].OutputValue')
+    PYTHON_LAMBDA_LAYER_KEY=.forgeResources/${VERSION}/layer.zip
+
+    rm -fr dist
+    mkdir dist
+    pipenv lock -r > dist/requirements.txt
+    pipenv run pip install -t dist/layer/python -r dist/requirements.txt
+
+    cd dist/layer
+    zip -r layer.zip .
+    aws s3 cp layer.zip s3://${S3_BUCKET}/${PYTHON_LAMBDA_LAYER_KEY}
+    PYTHON_LAMBDA_LAYER_ARN=$(aws --region ${1} lambda publish-layer-version --layer-name ${PYTHON_LAMBDA_LAYER_NAME} --content S3Bucket=${S3_BUCKET},S3Key=${PYTHON_LAMBDA_LAYER_KEY} --compatible-runtimes python3.7 | jq -r '.LayerVersionArn')
+
+
+    echo "# Deploying ForgeResources in the ${1} region"
+    cd ${SCRIPT_DIR}/..
     SSM_KMS_KEY_ARN=$(aws --region ${1} kms describe-key --key-id alias/aws/ssm | jq -r ".KeyMetadata.Arn")
 
     aws --region ${1} cloudformation package \
@@ -62,8 +73,8 @@ function deployForgeResources () {
         --no-fail-on-empty-changeset \
         --parameter-overrides \
             Version=${VERSION} \
-            SsmKmsKeyArn=${SSM_KMS_KEY_ARN}
-    echo ""
+            SsmKmsKeyArn=${SSM_KMS_KEY_ARN} \
+            PythonLambdaLayerArn=${PYTHON_LAMBDA_LAYER_ARN}
 }
 
 function deployForgeLogsMaintenance () {
@@ -89,10 +100,6 @@ function deployForgeLogsMaintenance () {
 }
 
 function main () {
-    echo "# Building go artefacts"
-
-    goArtefacts
-
     echo "# Deploying the forge in the us-east-1 region"
 
     deployForgeIam "us-east-1"
@@ -110,7 +117,6 @@ function main () {
 }
 
 function dev () {
-    goArtefacts
     deployForgeResources "us-east-1"
 }
 

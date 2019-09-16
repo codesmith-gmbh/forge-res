@@ -1,6 +1,6 @@
 # Bootstrap cloudformation template.
 
-The template is used to create the install/update jobs for the fondamental core of the forge.
+The template is used to create the install/update jobs for the fundamental core of the forge.
 
 It is normally installed using the `forge` cli tool (alternatively, until the `forge` cli tool is
 available). The following snippet is used for testing.

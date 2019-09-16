@@ -12,3 +12,5 @@
 *.out
 /.idea
 /dist
+__pycache__
+.venv
