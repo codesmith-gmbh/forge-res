@@ -1,15 +1,15 @@
 AllowedOAuthFlows:
-- code
-AllowedOAuthFlowsUserPoolClient: "true"
+  - code
+AllowedOAuthFlowsUserPoolClient: true
 AllowedOAuthScopes:
-- openid
-- email
-- aws.cognito.signin.user.admin
+  - openid
+  - email
+  - aws.cognito.signin.user.admin
 CallbackURLs:
-- "https://auth.test.com/auth"
+  - "https://auth.test.com/auth"
 LogoutURLs:
-- "https://auth.test.com/signout"
+  - "https://auth.test.com/signout"
 SupportedIdentityProviders:
-- COGNITO
+  - COGNITO
 UserPoolId: user-pool-id
 UserPoolClientId: user-pool-client-id

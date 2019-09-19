@@ -1,6 +1,8 @@
 import unittest
-import aws.CloudFormation.CogCondPreAuthSettings.cog_cond_pre_auth_settings as settings
+
 from schema import SchemaError
+
+import aws.CloudFormation.CogCondPreAuthSettings.cog_cond_pre_auth_settings as settings
 
 
 class TestCogCondPreAuthSettings(unittest.TestCase):
@@ -27,3 +29,7 @@ class TestCogCondPreAuthSettings(unittest.TestCase):
                                                            'UserPoolClientId': ''}))
         except SchemaError as e:
             self.assertTrue(e)
+
+
+if __name__ == '__main__':
+    unittest.main()

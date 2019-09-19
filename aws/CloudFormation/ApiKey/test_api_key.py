@@ -42,3 +42,7 @@ class TestApiKey(unittest.TestCase):
         test_key_id = 'test-forge-1'
         key_id = api_key.delete_api_key(test_key_id)
         self.assertEqual(test_key_id, key_id)
+
+
+if __name__ == '__main__':
+    unittest.main()

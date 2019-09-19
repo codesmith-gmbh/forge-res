@@ -5,6 +5,7 @@ verify_ssl = true
 
 [dev-packages]
 boto3 = "*"
+pyyaml = "*"
 
 [packages]
 crhelper = "*"

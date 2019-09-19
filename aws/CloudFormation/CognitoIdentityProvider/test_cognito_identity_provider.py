@@ -1,6 +1,8 @@
 import unittest
-import aws.CloudFormation.CognitoIdentityProvider.cognito_identity_provider as cip
+
 from box import Box
+
+import aws.CloudFormation.CognitoIdentityProvider.cognito_identity_provider as cip
 
 
 class TestCognitoIdentityProvider(unittest.TestCase):

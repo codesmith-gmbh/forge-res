@@ -2,7 +2,7 @@
   "AllowedOAuthFlows": [
     "code"
   ],
-  "AllowedOAuthFlowsUserPoolClient": "true",
+  "AllowedOAuthFlowsUserPoolClient": true,
   "AllowedOAuthScopes": [
     "openid",
     "email",

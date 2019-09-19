@@ -86,9 +86,9 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       AutoPublishAlias: live
-      CodeUri: ../../dist/cognitoUserPoolClientSettings_linux_amd64
+      CodeUri: ../../aws/CloudFormation/CognitoUserPoolClientSettings
       Description: Cloudformation Custom Resource for configuring a Cognito User Pool Client.
-      Handler: cognitoUserPoolClientSettings
+      Handler: cognito_user_pool_client_settings.handler
       MemorySize: 128
       Policies:
         - Version: '2012-10-17'
@@ -98,7 +98,7 @@ Resources:
                 - "cognito-idp:UpdateUserPoolClient"
               Resource:
                 - "*"
-      Runtime: go1.x
+      Runtime: python3.7
       Timeout: 300
   CognitoUserPoolClientSettingsPermission:
     Type: AWS::Lambda::Permission
