@@ -56,9 +56,9 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       AutoPublishAlias: live
-      CodeUri: ../../dist/cogCondPreAuthSettings_linux_amd64
+      CodeUri: ../../aws/CloudFormation/CogCondPreAuthSettings
       Description: Cloudformation Custom Resource for CogCondPreAuthSettings
-      Handler: cogCondPreAuthSettings
+      Handler: cog_cond_pre_auth_settings.handler
       MemorySize: 128
       Policies:
         - Version: '2012-10-17'
@@ -74,7 +74,7 @@ Resources:
                 - "ssm:PutParameter"
               Resource:
                 - "arn:aws:ssm:*:*:parameter/codesmith-forge/CogCondPreAuth/*"
-      Runtime: go1.x
+      Runtime: python3.7
       Timeout: 300
   CogCondPreAuthSettingsPermission:
     Type: AWS::Lambda::Permission
@@ -136,9 +136,9 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       AutoPublishAlias: live
-      CodeUri: ../../dist/cognitoIdentityProvider_linux_amd64
+      CodeUri: ../../aws/CloudFormation/CognitoIdentityProvider
       Description: Cloudformation Custom Resource for cognito user pool idendity provider
-      Handler: cognitoIdentityProvider
+      Handler: cognito_identity_provider.handler
       MemorySize: 128
       Policies:
         - Version: '2012-10-17'
@@ -159,7 +159,7 @@ Resources:
                 - kms:Decrypt
               Resource:
                 - !Ref SsmKmsKeyArn
-      Runtime: go1.x
+      Runtime: python3.7
       Timeout: 300
   CognitoIdentityProviderPermission:
     Type: AWS::Lambda::Permission

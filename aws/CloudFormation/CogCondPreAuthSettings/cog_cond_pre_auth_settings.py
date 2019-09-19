@@ -8,15 +8,11 @@ from schema import And, Optional, Schema
 
 import aws.common.naming as naming
 from aws.common.cfn import physical_resource_id, resource_properties
+from aws.common.schema import not_empty
 
 helper = CfnResource()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-
-
-def not_empty(x):
-    return bool(x)
-
 
 properties_schema = Schema({
     'UserPoolId': And(str, not_empty, error='not empty string for UserPoolId'),
