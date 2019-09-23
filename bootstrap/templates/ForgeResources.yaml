@@ -147,9 +147,9 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       AutoPublishAlias: live
-      CodeUri: ../../dist/dbInstanceResourceId_linux_amd64
+      CodeUri: ../../aws/CloudFormation/DbInstanceResourceId
       Description: Cloudformation Custom Resource to retrieve the resource id of a rds database instance
-      Handler: dbInstanceResourceId
+      Handler: db_instance_resource_id.handler
       MemorySize: 128
       Policies:
         - Version: '2012-10-17'
@@ -160,7 +160,7 @@ Resources:
                 - "rds:DescribeDBInstances"
               Resource:
                 - "*"
-      Runtime: go1.x
+      Runtime: python3.7
       Timeout: 300
   DbInstanceResourceIdPermission:
     Type: AWS::Lambda::Permission
