@@ -86,9 +86,9 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       AutoPublishAlias: live
-      CodeUri: ../../dist/cognitoUserPoolDomain_linux_amd64
+      CodeUri: ../../aws/CloudFormation/CognitoUserPoolDomain
       Description: Cloudformation Custom Resource for Cognito User Pool Domain
-      Handler: cognitoUserPoolDomain
+      Handler: cognito_user_pool_domain.handler
       MemorySize: 128
       Policies:
         - Version: '2012-10-17'
@@ -100,7 +100,7 @@ Resources:
                 - "cloudfront:UpdateDistribution"
               Resource:
                 - "*"
-      Runtime: go1.x
+      Runtime: python3.7
       Timeout: 300
   CognitoUserPoolDomainPermission:
     Type: AWS::Lambda::Permission
