@@ -12,6 +12,7 @@ crhelper = "*"
 python-box = "*"
 schema = "*"
 fastjsonschema = "*"
+lark-parser = "*"
 
 [requires]
 python_version = "3.7"
