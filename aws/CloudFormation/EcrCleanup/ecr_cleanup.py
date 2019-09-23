@@ -39,13 +39,8 @@ def physical_resource_id(event, properties):
 @helper.delete
 def delete(event, _):
     properties = validate_properties(resource_properties(event))
-    if has_valid_physical_resource_id(event, properties):
-        stacks = cf.describe_stacks(
-            StackName=cfn.stack_id(event),
-        )
-        stack_status = stacks['Stacks'][0]['StackStatus']
-        if stack_status == 'DELETE_IN_PROGRESS':
-            delete_all_images(properties)
+    if has_valid_physical_resource_id(event, properties) and cfn.is_stack_delete_in_progress(cf, event):
+        delete_all_images(properties)
     return cfn.physical_resource_id(event)
 
 
