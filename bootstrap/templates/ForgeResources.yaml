@@ -319,9 +319,9 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       AutoPublishAlias: live
-      CodeUri: ../../dist/ecrCleanup_linux_amd64
+      CodeUri: ../../aws/CloudFormation/EcrCleanup
       Description: Cloudformation Custom Resource for ECR Cleaning
-      Handler: ecrCleanup
+      Handler: ecr_cleanup.handler
       MemorySize: 128
       Policies:
         - Version: '2012-10-17'
@@ -332,7 +332,7 @@ Resources:
                 - "cloudformation:DescribeStacks"
               Resource:
                 - "*"
-      Runtime: go1.x
+      Runtime: python3.7
       Timeout: 300
   EcrCleanupPermission:
     Type: AWS::Lambda::Permission

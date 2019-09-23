@@ -1,3 +1,11 @@
+def stack_id(event):
+    return event.get('StackId')
+
+
+def logical_resource_id(event):
+    return event.get('LogicalResourceId')
+
+
 def physical_resource_id(event):
     return event.get('PhysicalResourceId')
 
