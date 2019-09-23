@@ -82,30 +82,6 @@ Resources:
       Action: lambda:InvokeFunction
       FunctionName: !GetAtt CogCondPreAuthSettingsFunction.Arn
       Principal: cloudformation.amazonaws.com
-  CognitoUserPoolClientSettingsFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      AutoPublishAlias: live
-      CodeUri: ../../aws/CloudFormation/CognitoUserPoolClientSettings
-      Description: Cloudformation Custom Resource for configuring a Cognito User Pool Client.
-      Handler: cognito_user_pool_client_settings.handler
-      MemorySize: 128
-      Policies:
-        - Version: '2012-10-17'
-          Statement:
-            - Effect: Allow
-              Action:
-                - "cognito-idp:UpdateUserPoolClient"
-              Resource:
-                - "*"
-      Runtime: python3.7
-      Timeout: 300
-  CognitoUserPoolClientSettingsPermission:
-    Type: AWS::Lambda::Permission
-    Properties:
-      Action: lambda:InvokeFunction
-      FunctionName: !GetAtt CognitoUserPoolClientSettingsFunction.Arn
-      Principal: cloudformation.amazonaws.com
   CognitoUserPoolDomainFunction:
     Type: AWS::Serverless::Function
     Properties:
