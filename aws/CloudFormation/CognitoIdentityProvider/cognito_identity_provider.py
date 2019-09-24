@@ -45,14 +45,6 @@ def derive_details(properties):
     return details
 
 
-def read_parameter(parameter_name):
-    parameter = ssm.get_parameter(
-        Name=parameter_name,
-        WithDecryption=True
-    )
-    return parameter['Parameter']['Value']
-
-
 @helper.create
 def create(event, _):
     properties = validate_properties(resource_properties(event))

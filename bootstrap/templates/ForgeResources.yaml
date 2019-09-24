@@ -422,9 +422,9 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       AutoPublishAlias: live
-      CodeUri: ../../dist/sequence_linux_amd64
+      CodeUri: ../../aws/CloudFormation/Sequence
       Description: Cloudformation Custom Resource for Sequences
-      Handler: sequence
+      Handler: sequence.handler
       MemorySize: 128
       Policies:
         - Version: '2012-10-17'
@@ -440,7 +440,7 @@ Resources:
                 - "ssm:PutParameter"
               Resource:
                 - "arn:aws:ssm:*:*:parameter/codesmith-forge/Sequence/*"
-      Runtime: go1.x
+      Runtime: python3.7
       Timeout: 300
   SequencePermission:
     Type: AWS::Lambda::Permission
@@ -452,9 +452,9 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       AutoPublishAlias: live
-      CodeUri: ../../dist/sequenceValue_linux_amd64
+      CodeUri: ../../aws/CloudFormation/SequenceValue
       Description: Cloudformation Custom Resource for Sequence Values
-      Handler: sequenceValue
+      Handler: sequence_value.handler
       MemorySize: 128
       Policies:
         - Version: '2012-10-17'
@@ -469,7 +469,7 @@ Resources:
                 - "ssm:PutParameter"
               Resource:
                 - "arn:aws:ssm:*:*:parameter/codesmith-forge/Sequence/*"
-      Runtime: go1.x
+      Runtime: python3.7
       Timeout: 300
   SequenceValuePermission:
     Type: AWS::Lambda::Permission

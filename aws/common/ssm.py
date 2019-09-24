@@ -16,6 +16,14 @@ def put_string_parameter(ssm, parameter_name, *, value, description):
     return parameter_name
 
 
+def fetch_string_parameter(ssm, parameter_name):
+    parameter = ssm.get_parameter(
+        Name=parameter_name,
+        WithDecryption=True
+    )
+    return parameter['Parameter']['Value']
+
+
 def silent_delete_parameter(ssm, parameter_name):
     try:
         ssm.delete_parameter(Name=parameter_name)

@@ -1,5 +1,7 @@
 from lark import Lark, v_args, Transformer
 
+SSM_PARAMETER_DESCRIPTION = 'Forge Sequence Parameter'
+
 
 @v_args(inline=True)  # Affects the signatures of the methods
 class CalcTransformer(Transformer):

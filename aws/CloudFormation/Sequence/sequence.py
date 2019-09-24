@@ -6,7 +6,7 @@ from crhelper import CfnResource
 from schema import And, Optional, Schema
 
 from aws.common import naming
-from aws.common.calc import calculator
+from aws.common.calc import calculator, SSM_PARAMETER_DESCRIPTION
 from aws.common.cfn import resource_properties
 from aws.common.schema import not_empty
 from aws.common.ssm import silent_delete_parameter_from_event, put_string_parameter
@@ -43,7 +43,7 @@ def put_sequence_parameter(properties):
     parameter_name = naming.sequence_parameter_name(properties.parameter_name)
     return put_string_parameter(ssm, parameter_name,
                                 value=properties.expression,
-                                description='Forge Sequence Parameter')
+                                description=SSM_PARAMETER_DESCRIPTION)
 
 
 @helper.delete
