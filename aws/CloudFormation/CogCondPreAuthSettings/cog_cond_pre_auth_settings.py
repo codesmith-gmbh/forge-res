@@ -7,8 +7,9 @@ from crhelper import CfnResource
 from schema import And, Optional, Schema
 
 import aws.common.naming as naming
-from aws.common.cfn import physical_resource_id, resource_properties
+from aws.common.cfn import resource_properties
 from aws.common.schema import not_empty
+from aws.common.ssm import put_string_parameter, silent_delete_parameter_from_event
 
 helper = CfnResource()
 logger = logging.getLogger(__name__)
@@ -34,28 +35,15 @@ def validate_properties(props):
 def create(event, _):
     p = validate_properties(resource_properties(event))
     parameter_name = naming.cog_cond_pre_auth_parameter_name(p.user_pool_id, p.user_pool_client_id)
-    parameter_value = json.dumps({'All': p.all, 'Domains': p.domains, 'Emails': p.emails}),
-    try:
-        ssm.put_parameter(
-            Name=parameter_name,
-            Value=parameter_value,
-            Overwrite=True,
-            Type='String',
-            Tier='Standard'
-        )
-    except ssm.exceptions.ClientError as e:
-        raise RuntimeError(f'Cannot create parameter with name {parameter_name}') from e
-    return parameter_name
+    parameter_value = json.dumps({'All': p.all, 'Domains': p.domains, 'Emails': p.emails})
+    return put_string_parameter(ssm, parameter_name,
+                                value=parameter_value,
+                                description='Forge Cognito Pre Auth Settings Parameter')
 
 
 @helper.delete
 def delete(event, _):
-    parameter_name = physical_resource_id(event)
-    try:
-        ssm.delete_parameter(Name=parameter_name)
-    except ssm.exceptions.ParameterNotFound:
-        pass
-    return parameter_name
+    return silent_delete_parameter_from_event(ssm, event)
 
 
 def handler(event, context):
