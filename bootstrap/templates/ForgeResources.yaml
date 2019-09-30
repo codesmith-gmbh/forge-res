@@ -454,7 +454,7 @@ Resources:
       AutoPublishAlias: live
       CodeUri: ../../aws/CloudFormation/SequenceValue
       Description: Cloudformation Custom Resource for Sequence Values
-      Handler: sequence_value.handler
+      Handler: sequence_value.process_event
       MemorySize: 128
       Policies:
         - Version: '2012-10-17'
@@ -482,9 +482,9 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       AutoPublishAlias: live
-      CodeUri: ../../dist/pipelineTrigger_linux_amd64
-      Runtime: go1.x
-      Handler: pipelineTrigger
+      CodeUri: ../../aws/CodeCommit/PipelineTrigger/pipline_trigger.py
+      Runtime: python3.7
+      Handler: pipline_trigger.handler
       Policies:
         - Version: '2012-10-17'
           Statement:
