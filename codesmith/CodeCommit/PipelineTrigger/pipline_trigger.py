@@ -1,19 +1,15 @@
+import io
+import json
 import logging
+import os
+import zipfile
 
 import boto3
 from box import Box
 from crhelper import CfnResource
 from schema import And, Optional, Schema
-import json
-import io
-import zipfile
-import os
 
-from codesmith.common import naming, cfn
-from codesmith.common.calc import calculator, SSM_PARAMETER_DESCRIPTION
-from codesmith.common.cfn import resource_properties, logical_resource_id
 from codesmith.common.schema import not_empty
-from codesmith.common.ssm import put_string_parameter, fetch_string_parameter
 
 helper = CfnResource()
 logger = logging.getLogger(__name__)

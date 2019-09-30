@@ -22,7 +22,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       AutoPublishAlias: live
-      CodeUri: ../../aws/CloudFormation/ApiKey
+      CodeUri: ../../codesmith/CloudFormation/ApiKey
       Description: Cloudformation Custom Resource for apg api keys for Cloudfront.
       Handler: api_key.handler
       Layers:
@@ -56,7 +56,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       AutoPublishAlias: live
-      CodeUri: ../../aws/CloudFormation/CogCondPreAuthSettings
+      CodeUri: ../../codesmith/CloudFormation/CogCondPreAuthSettings
       Description: Cloudformation Custom Resource for CogCondPreAuthSettings
       Handler: cog_cond_pre_auth_settings.handler
       MemorySize: 128
@@ -86,7 +86,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       AutoPublishAlias: live
-      CodeUri: ../../aws/CloudFormation/CognitoUserPoolDomain
+      CodeUri: ../../codesmith/CloudFormation/CognitoUserPoolDomain
       Description: Cloudformation Custom Resource for Cognito User Pool Domain
       Handler: cognito_user_pool_domain.handler
       MemorySize: 128
@@ -112,7 +112,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       AutoPublishAlias: live
-      CodeUri: ../../aws/CloudFormation/CognitoIdentityProvider
+      CodeUri: ../../codesmith/CloudFormation/CognitoIdentityProvider
       Description: Cloudformation Custom Resource for cognito user pool idendity provider
       Handler: cognito_identity_provider.handler
       MemorySize: 128
@@ -147,7 +147,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       AutoPublishAlias: live
-      CodeUri: ../../aws/CloudFormation/DbInstanceResourceId
+      CodeUri: ../../codesmith/CloudFormation/DbInstanceResourceId
       Description: Cloudformation Custom Resource to retrieve the resource id of a rds database instance
       Handler: db_instance_resource_id.handler
       MemorySize: 128
@@ -319,7 +319,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       AutoPublishAlias: live
-      CodeUri: ../../aws/CloudFormation/EcrCleanup
+      CodeUri: ../../codesmith/CloudFormation/EcrCleanup
       Description: Cloudformation Custom Resource for ECR Cleaning
       Handler: ecr_cleanup.handler
       MemorySize: 128
@@ -422,7 +422,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       AutoPublishAlias: live
-      CodeUri: ../../aws/CloudFormation/Sequence
+      CodeUri: ../../codesmith/CloudFormation/Sequence
       Description: Cloudformation Custom Resource for Sequences
       Handler: sequence.handler
       MemorySize: 128
@@ -452,7 +452,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       AutoPublishAlias: live
-      CodeUri: ../../aws/CloudFormation/SequenceValue
+      CodeUri: ../../codesmith/CloudFormation/SequenceValue
       Description: Cloudformation Custom Resource for Sequence Values
       Handler: sequence_value.process_event
       MemorySize: 128
@@ -482,7 +482,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       AutoPublishAlias: live
-      CodeUri: ../../aws/CodeCommit/PipelineTrigger/pipline_trigger.py
+      CodeUri: ../../codesmith/CodeCommit/PipelineTrigger/pipline_trigger.py
       Runtime: python3.7
       Handler: pipline_trigger.handler
       Policies:
@@ -511,8 +511,8 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       AutoPublishAlias: live
-      CodeUri: ../../dist/cogCondPreAuth_linux_amd64
-      Handler: cogCondPreAuth
+      CodeUri: ../../codesmith/Cognito/CogCondPreAuth
+      Handler: cog_cond_pre_auth.handler
       Policies:
         - Version: '2012-10-17'
           Statement:
@@ -525,7 +525,7 @@ Resources:
                 - "ssm:GetParameters"
               Resource:
                 - "arn:aws:ssm:*:*:parameter/codesmith-forge/CogCondPreAuth/*"
-      Runtime: go1.x
+      Runtime: python3.7
       Timeout: 10
   CogCondPreAuthPermission:
     Type: AWS::Lambda::Permission
@@ -546,10 +546,6 @@ Outputs:
     Value: !GetAtt CogCondPreAuthSettingsFunction.Arn
     Export:
       Name: !Sub "${AWS::StackName}-CogCondPreAuthSettings"
-  CognitoUserPoolClientSettings:
-    Value: !GetAtt CognitoUserPoolClientSettingsFunction.Arn
-    Export:
-      Name: !Sub "${AWS::StackName}-CognitoUserPoolClientSettings"
   CognitoUserPoolDomain:
     Value: !GetAtt CognitoUserPoolDomainFunction.Arn
     Export:
