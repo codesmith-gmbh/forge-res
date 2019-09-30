@@ -5,8 +5,8 @@ from box import Box
 from crhelper import CfnResource
 from schema import And, Optional, Schema
 
-from aws.common.cfn import resource_properties, physical_resource_id
-from aws.common.schema import not_empty
+from codesmith.common.cfn import resource_properties, physical_resource_id
+from codesmith.common.schema import not_empty
 
 helper = CfnResource()
 logger = logging.getLogger(__name__)

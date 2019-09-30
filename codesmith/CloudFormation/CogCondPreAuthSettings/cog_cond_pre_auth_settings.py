@@ -6,10 +6,10 @@ from box import Box
 from crhelper import CfnResource
 from schema import And, Optional, Schema
 
-import aws.common.naming as naming
-from aws.common.cfn import resource_properties
-from aws.common.schema import not_empty
-from aws.common.ssm import put_string_parameter, silent_delete_parameter_from_event
+import codesmith.common.naming as naming
+from codesmith.common.cfn import resource_properties
+from codesmith.common.schema import not_empty
+from codesmith.common.ssm import put_string_parameter, silent_delete_parameter_from_event
 
 helper = CfnResource()
 logger = logging.getLogger(__name__)

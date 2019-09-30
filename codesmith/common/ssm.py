@@ -1,4 +1,4 @@
-from aws.common import cfn
+from codesmith.common import cfn
 
 
 def put_string_parameter(ssm, parameter_name, *, value, description):

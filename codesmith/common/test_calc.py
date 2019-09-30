@@ -1,5 +1,5 @@
 import unittest
-import aws.common.calc as calc
+import codesmith.common.calc as calc
 
 
 class TestCalc(unittest.TestCase):

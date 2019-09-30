@@ -1,5 +1,5 @@
 import unittest
-import aws.CloudFormation.ApiKey.api_key as api_key
+import codesmith.CloudFormation.ApiKey.api_key as api_key
 
 
 class TestApiKey(unittest.TestCase):

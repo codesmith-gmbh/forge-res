@@ -3,7 +3,7 @@ from typing import NamedTuple
 
 import boto3
 from crhelper import CfnResource
-from aws.common.cfn import physical_resource_id, resource_properties
+from codesmith.common.cfn import physical_resource_id, resource_properties
 
 helper = CfnResource()
 logger = logging.getLogger(__name__)

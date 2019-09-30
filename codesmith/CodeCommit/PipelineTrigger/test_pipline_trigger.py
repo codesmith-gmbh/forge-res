@@ -1,5 +1,5 @@
 import unittest
-import aws.CodeCommit.PipelineTrigger.pipline_trigger as pt
+import codesmith.CodeCommit.PipelineTrigger.pipline_trigger as pt
 import json
 import io
 import zipfile

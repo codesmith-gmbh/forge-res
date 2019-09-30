@@ -2,14 +2,14 @@ import unittest
 
 from schema import SchemaError
 
-import aws.CloudFormation.CogCondPreAuthSettings.cog_cond_pre_auth_settings as settings
+import codesmith.CloudFormation.CogCondPreAuthSettings.cog_cond_pre_auth_settings as settings
 
 
 class TestCogCondPreAuthSettings(unittest.TestCase):
     def test_validate_properties(self):
         self.assertTrue(settings.validate_properties({'UserPoolId': 'id1',
                                                       'UserPoolClientId': 'id2',
-                                                      'All': 1,
+                                                      'All': True,
                                                       'Domains': [],
                                                       'Emails': []}))
 

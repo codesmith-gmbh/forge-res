@@ -1,9 +1,9 @@
 import unittest
 
-import aws.CloudFormation.CognitoUserPoolDomain.cognito_user_pool_domain as cupd
+import codesmith.CloudFormation.CognitoUserPoolDomain.cognito_user_pool_domain as cupd
 
 
-class MyTestCase(unittest.TestCase):
+class TestCognitoUserPoolDomain(unittest.TestCase):
     def test_delete_unexisting_cognito_user_domain(self):
         p = cupd.validate_properties({
             'Domain': 'test.codesmith.ch',

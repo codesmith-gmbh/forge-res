@@ -5,11 +5,11 @@ from box import Box
 from crhelper import CfnResource
 from schema import And, Schema
 
-from aws.common import naming, cfn
-from aws.common.calc import calculator, SSM_PARAMETER_DESCRIPTION
-from aws.common.cfn import resource_properties, logical_resource_id
-from aws.common.schema import not_empty
-from aws.common.ssm import put_string_parameter, fetch_string_parameter
+from codesmith.common import naming, cfn
+from codesmith.common.calc import calculator, SSM_PARAMETER_DESCRIPTION
+from codesmith.common.cfn import resource_properties, logical_resource_id
+from codesmith.common.schema import not_empty
+from codesmith.common.ssm import put_string_parameter, fetch_string_parameter
 
 helper = CfnResource()
 logger = logging.getLogger(__name__)
