@@ -20,7 +20,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       AutoPublishAlias: live
-      CodeUri: ../../dist/logsMaintenance_linux_amd64
+      CodeUri: ../../LogsMaintenance
       Environment:
         Variables:
           SNS_ALERT_TOPIC_ARN: !Ref AlertTopic
@@ -29,7 +29,7 @@ Resources:
           Type: Schedule
           Properties:
             Schedule: "rate(7 days)"
-      Handler: logsMaintenance
+      Handler: logs_maintenance.handler
       MemorySize: 1024
       Policies:
         - Version: '2012-10-17'
@@ -45,5 +45,5 @@ Resources:
                 - "ec2:DescribeRegions"
               Resource:
                 - "*"
-      Runtime: go1.x
+      Runtime: python3.7
       Timeout: 900
