@@ -6,12 +6,10 @@ import zipfile
 
 import boto3
 from box import Box
-from crhelper import CfnResource
 from schema import And, Optional, Schema
 
 from codesmith.common.schema import not_empty
 
-helper = CfnResource()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
