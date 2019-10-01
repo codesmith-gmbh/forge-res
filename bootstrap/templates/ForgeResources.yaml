@@ -365,9 +365,9 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       AutoPublishAlias: live
-      CodeUri: ../../dist/listenerRuleSwapper_linux_amd64
+      CodeUri: ../../CloudFormation/ListenerRuleSwapper
       Description: Cloudformation Custom Resource to swap 2 rules during the update of a stack.
-      Handler: listenerRuleSwapper
+      Handler: listener_rule_swapper.handler
       MemorySize: 128
       Policies:
         - Version: '2012-10-17'
@@ -385,7 +385,7 @@ Resources:
                 - "cloudformation:DescribeStackResource"
               Resource:
                 - "*"
-      Runtime: go1.x
+      Runtime: python3.7
       Timeout: 300
   ListenerRuleSwapperPermission:
     Type: AWS::Lambda::Permission
