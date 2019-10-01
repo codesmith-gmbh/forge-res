@@ -6,6 +6,7 @@ verify_ssl = true
 [dev-packages]
 boto3 = "*"
 pyyaml = "*"
+colorama = "*"
 
 [packages]
 crhelper = "*"
@@ -13,6 +14,7 @@ python-box = "*"
 schema = "*"
 fastjsonschema = "*"
 lark-parser = "*"
+structlog = "*"
 
 [requires]
 python_version = "3.7"

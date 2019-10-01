@@ -23,7 +23,7 @@ func IsCertificateArn(s string) bool {
 // use the arn of an existing resource to detect if a change of region has
 // happen: the region could have been undefined previously and gets
 // suddenly defined or the other way around.
-var regionExtractor = regexp.MustCompile("arn:aws:(?:.*?):(.*?):")
+var regionExtractor = regexp.MustCompile(impo)
 
 func ArnRegion(arn string) string {
 	return regionExtractor.FindStringSubmatch(arn)[1]

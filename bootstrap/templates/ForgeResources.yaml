@@ -397,9 +397,9 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       AutoPublishAlias: live
-      CodeUri: ../../dist/s3Cleanup_linux_amd64
+      CodeUri: ../../codesmith/CloudFormation/S3Cleanup
       Description: Cloudformation Custom Resource for S3 Bucket Cleaning
-      Handler: s3Cleanup
+      Handler: s3_cleanup.handler
       MemorySize: 128
       Policies:
         - Version: '2012-10-17'
@@ -410,7 +410,7 @@ Resources:
                 - "cloudformation:DescribeStacks"
               Resource:
                 - "*"
-      Runtime: go1.x
+      Runtime: python3.7
       Timeout: 300
   S3CleanupPermission:
     Type: AWS::Lambda::Permission

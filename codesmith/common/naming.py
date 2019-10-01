@@ -1,3 +1,5 @@
+import re
+
 # SSM Parameters
 #
 # Some of the custom CloudFormation resources create by the forge are implemented
@@ -13,3 +15,16 @@ def cog_cond_pre_auth_parameter_name(user_pool_id: str, user_pool_client_id: str
 # Sequence naming
 def sequence_parameter_name(sequence_name: str) -> str:
     return '{0}/Sequence{1}'.format(SSM_PARAMETER_PREFIX, sequence_name)
+
+
+# Dns Certificate SNS Message memory
+def dns_certificate_sns_message_id_parameter_name(stack_arn, logical_resource_id):
+    stack_id = extract_stack_id(stack_arn)
+    return '{0}/DnsCertificateSnsMessageId/{1}/{2}'.format(SSM_PARAMETER_PREFIX, stack_id, logical_resource_id)
+
+
+STACK_ID_REGEX = re.compile('^arn:.*:cloudformation:.*:.*:stack/(.*)')
+
+
+def extract_stack_id(stack_arn):
+    return STACK_ID_REGEX.match(stack_arn).group(1)

@@ -67,19 +67,9 @@ def rule_priorities(rules):
 @helper.delete
 def delete(event, _):
     properties = validate_properties(resource_properties(event))
-    if is_being_replaced(event):
+    if cfn.is_being_replaced(cf, event):
         swap_rules(properties)
     return cfn.physical_resource_id(event)
-
-
-def is_being_replaced(event):
-    lid = logical_resource_id(event)
-    stack_id = cfn.stack_id(event)
-    res = cf.describe_stack_resource(
-        StackName=stack_id,
-        LogicalResourceId=lid
-    )
-    return cfn.physical_resource_id(event) != res['StackResourceDetail']['PhysicalResourceId']
 
 
 def handler(event, context):

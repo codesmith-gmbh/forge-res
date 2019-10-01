@@ -6,9 +6,9 @@ def not_empty(x):
     return bool(x)
 
 
-def non_empty_string(*, field_name="Unknown"):
-    return And(str, not_empty, 'field %s may not be empty'.format(field_name))
+def non_empty_string():
+    return And(str, not_empty)
 
 
 def box(properties, *, schema):
-    return Box(schema.validate(properties), camel_killer_box=True)
+    return Box(schema.validate(properties), camel_killer_box=True, default_box=True, default_box_attr=None)
