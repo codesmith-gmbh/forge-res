@@ -22,7 +22,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       AutoPublishAlias: live
-      CodeUri: ../../codesmith/CloudFormation/ApiKey
+      CodeUri: ../../codesmith/CloudFormation/ApiKey/
       Description: Cloudformation Custom Resource for apg api keys for Cloudfront.
       Handler: api_key.handler
       Layers:
@@ -56,7 +56,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       AutoPublishAlias: live
-      CodeUri: ../../codesmith/CloudFormation/CogCondPreAuthSettings
+      CodeUri: ../../codesmith/CloudFormation/CogCondPreAuthSettings/
       Description: Cloudformation Custom Resource for CogCondPreAuthSettings
       Handler: cog_cond_pre_auth_settings.handler
       MemorySize: 128
@@ -86,9 +86,11 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       AutoPublishAlias: live
-      CodeUri: ../../codesmith/CloudFormation/CognitoUserPoolDomain
+      CodeUri: ../../codesmith/CloudFormation/CognitoUserPoolDomain/
       Description: Cloudformation Custom Resource for Cognito User Pool Domain
       Handler: cognito_user_pool_domain.handler
+      Layers:
+        - !Ref PythonLambdaLayerArn
       MemorySize: 128
       Policies:
         - Version: '2012-10-17'
@@ -112,9 +114,11 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       AutoPublishAlias: live
-      CodeUri: ../../codesmith/CloudFormation/CognitoIdentityProvider
+      CodeUri: ../../codesmith/CloudFormation/CognitoIdentityProvider/
       Description: Cloudformation Custom Resource for cognito user pool idendity provider
       Handler: cognito_identity_provider.handler
+      Layers:
+        - !Ref PythonLambdaLayerArn
       MemorySize: 128
       Policies:
         - Version: '2012-10-17'
@@ -147,9 +151,11 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       AutoPublishAlias: live
-      CodeUri: ../../codesmith/CloudFormation/DbInstanceResourceId
+      CodeUri: ../../codesmith/CloudFormation/DbInstanceResourceId/
       Description: Cloudformation Custom Resource to retrieve the resource id of a rds database instance
       Handler: db_instance_resource_id.handler
+      Layers:
+        - !Ref PythonLambdaLayerArn
       MemorySize: 128
       Policies:
         - Version: '2012-10-17'
@@ -174,7 +180,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       AutoPublishAlias: live
-      CodeUri: ../../codesmith/CloudFormation/DnsCertificate
+      CodeUri: ../../codesmith/CloudFormation/DnsCertificate/
       Description: Cloudformation Custom Resource for SSL Certificates validated via DNS.
       Environment:
         Variables:
@@ -185,6 +191,8 @@ Resources:
           Properties:
             Topic: !Ref DnsCertificateSNSTopic
       Handler: dns_certificate.handler
+      Layers:
+        - !Ref PythonLambdaLayerArn
       MemorySize: 128
       Policies:
         - Version: '2012-10-17'
@@ -235,9 +243,11 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       AutoPublishAlias: live
-      CodeUri: ../../codesmith/CloudFormation/DnsCertificateCheck
+      CodeUri: ../../codesmith/CloudFormation/DnsCertificateCheck/
       Description: Function to check a certificate inside a step functions state machine
       Handler: dns_certificate_check.handler
+      Layers:
+        - !Ref PythonLambdaLayerArn
       MemorySize: 128
       Policies:
         - Version: '2012-10-17'
@@ -319,9 +329,11 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       AutoPublishAlias: live
-      CodeUri: ../../codesmith/CloudFormation/EcrCleanup
+      CodeUri: ../../codesmith/CloudFormation/EcrCleanup/
       Description: Cloudformation Custom Resource for ECR Cleaning
       Handler: ecr_cleanup.handler
+      Layers:
+        - !Ref PythonLambdaLayerArn
       MemorySize: 128
       Policies:
         - Version: '2012-10-17'
@@ -344,8 +356,10 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       AutoPublishAlias: live
-      CodeUri: ../../codesmith/CloudFormation/ForgeResources
+      CodeUri: ../../codesmith/CloudFormation/ForgeResources/
       Handler: forge_resources.handler
+      Layers:
+        - !Ref PythonLambdaLayerArn
       MemorySize: 512
       Runtime: python3.7
       Timeout: 300
@@ -365,9 +379,11 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       AutoPublishAlias: live
-      CodeUri: ../../CloudFormation/ListenerRuleSwapper
+      CodeUri: ../../codesmith/CloudFormation/ListenerRuleSwapper/
       Description: Cloudformation Custom Resource to swap 2 rules during the update of a stack.
       Handler: listener_rule_swapper.handler
+      Layers:
+        - !Ref PythonLambdaLayerArn
       MemorySize: 128
       Policies:
         - Version: '2012-10-17'
@@ -397,9 +413,11 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       AutoPublishAlias: live
-      CodeUri: ../../codesmith/CloudFormation/S3Cleanup
+      CodeUri: ../../codesmith/CloudFormation/S3Cleanup/
       Description: Cloudformation Custom Resource for S3 Bucket Cleaning
       Handler: s3_cleanup.handler
+      Layers:
+        - !Ref PythonLambdaLayerArn
       MemorySize: 128
       Policies:
         - Version: '2012-10-17'
@@ -422,9 +440,11 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       AutoPublishAlias: live
-      CodeUri: ../../codesmith/CloudFormation/Sequence
+      CodeUri: ../../codesmith/CloudFormation/Sequence/
       Description: Cloudformation Custom Resource for Sequences
       Handler: sequence.handler
+      Layers:
+        - !Ref PythonLambdaLayerArn
       MemorySize: 128
       Policies:
         - Version: '2012-10-17'
@@ -452,9 +472,11 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       AutoPublishAlias: live
-      CodeUri: ../../codesmith/CloudFormation/SequenceValue
+      CodeUri: ../../codesmith/CloudFormation/SequenceValue/
       Description: Cloudformation Custom Resource for Sequence Values
       Handler: sequence_value.process_event
+      Layers:
+        - !Ref PythonLambdaLayerArn
       MemorySize: 128
       Policies:
         - Version: '2012-10-17'
@@ -482,9 +504,11 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       AutoPublishAlias: live
-      CodeUri: ../../codesmith/CodeCommit/PipelineTrigger/pipline_trigger.py
+      CodeUri: ../../codesmith/CodeCommit/PipelineTrigger/
       Runtime: python3.7
       Handler: pipline_trigger.handler
+      Layers:
+        - !Ref PythonLambdaLayerArn
       Policies:
         - Version: '2012-10-17'
           Statement:
@@ -511,8 +535,10 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       AutoPublishAlias: live
-      CodeUri: ../../codesmith/Cognito/CogCondPreAuth
+      CodeUri: ../../codesmith/Cognito/CogCondPreAuth/
       Handler: cog_cond_pre_auth.handler
+      Layers:
+        - !Ref PythonLambdaLayerArn
       Policies:
         - Version: '2012-10-17'
           Statement:
