@@ -1,13 +1,15 @@
 from schema import And
 from box import Box
+import json
 
 
 def not_empty(x):
     return bool(x)
 
 
-def non_empty_string():
-    return And(str, not_empty)
+encoded_bool = And(str, json.loads, bool)
+
+non_empty_string = And(str, not_empty)
 
 
 def box(properties, *, schema):

@@ -7,7 +7,7 @@ from schema import And, Optional, Schema
 
 import codesmith.common.cfn as cfn
 from codesmith.common.cfn import logical_resource_id, resource_properties
-from codesmith.common.schema import not_empty
+from codesmith.common.schema import encoded_bool, not_empty
 
 helper = CfnResource()
 logger = logging.getLogger(__name__)
@@ -20,7 +20,7 @@ properties_schema = Schema({
     'Bucket': And(str, not_empty, 'not empty string for Bucket'),
 
     Optional('Prefix', default=''): str,
-    Optional('ActiveOnlyOnStackDeletion', default=True): bool
+    Optional('ActiveOnlyOnStackDeletion', default=True): encoded_bool
 })
 
 

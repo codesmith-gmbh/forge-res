@@ -8,7 +8,7 @@ import boto3
 from box import Box
 from schema import And, Optional, Schema
 
-from codesmith.common.schema import not_empty
+from codesmith.common.schema import encoded_bool, not_empty
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -17,8 +17,8 @@ s3 = boto3.client('s3')
 
 properties_schema = Schema({
     'Pipeline': And(str, not_empty, error='not empty string for Pipeline'),
-    Optional('OnTag', default=False): bool,
-    Optional('OnCommit', default=False): bool
+    Optional('OnTag', default=False): encoded_bool,
+    Optional('OnCommit', default=False): encoded_bool
 })
 
 

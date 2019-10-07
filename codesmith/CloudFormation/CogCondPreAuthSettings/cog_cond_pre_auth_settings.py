@@ -8,7 +8,7 @@ from schema import And, Optional, Schema
 
 import codesmith.common.naming as naming
 from codesmith.common.cfn import resource_properties
-from codesmith.common.schema import not_empty
+from codesmith.common.schema import encoded_bool, not_empty
 from codesmith.common.ssm import put_string_parameter, silent_delete_parameter_from_event
 
 helper = CfnResource()
@@ -18,7 +18,7 @@ logger.setLevel(logging.INFO)
 properties_schema = Schema({
     'UserPoolId': And(str, not_empty, error='not empty string for UserPoolId'),
     'UserPoolClientId': And(str, not_empty, error='not empty string for UserPoolClientId'),
-    Optional('All', default=False): bool,
+    Optional('All', default=False): encoded_bool,
     Optional('Domains', default=[]): [str],
     Optional('Emails', default=[]): [str]
 })

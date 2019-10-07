@@ -11,7 +11,7 @@ import codesmith.common.common as c
 import codesmith.common.naming as naming
 import codesmith.common.ssm as cssm
 from codesmith.common.cfn import resource_properties
-from codesmith.common.schema import box, non_empty_string
+from codesmith.common.schema import box, encoded_bool, non_empty_string
 
 STATE_MACHINE_ARN = os.environ.get('STATE_MACHINE_ARN')
 
@@ -26,14 +26,14 @@ step = boto3.client('stepfunctions')
 #
 
 properties_schema = Schema({
-    'DomainName': non_empty_string(),
-    Optional('Region'): non_empty_string(),
+    'DomainName': non_empty_string,
+    Optional('Region'): non_empty_string,
     Optional('SubjectAlternativeNames', default=[]): [str],
-    Optional('Tags', default=[]): {'Key': non_empty_string(),
-                                   'Value': non_empty_string()},
-    Optional('HostedZoneName'): non_empty_string(),
-    Optional('HostedZoneId'): non_empty_string(),
-    Optional('WithCaaRecords', default=True): bool
+    Optional('Tags', default=[]): {'Key': non_empty_string,
+                                   'Value': non_empty_string},
+    Optional('HostedZoneName'): non_empty_string,
+    Optional('HostedZoneId'): non_empty_string,
+    Optional('WithCaaRecords', default=True): encoded_bool
 })
 
 

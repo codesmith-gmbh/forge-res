@@ -6,6 +6,7 @@ from box import Box
 from schema import Optional, Schema
 
 import codesmith.common.naming as naming
+from codesmith.common.schema import encoded_bool
 from codesmith.common.ssm import fetch_string_parameter
 
 logger = logging.getLogger(__name__)
@@ -14,7 +15,7 @@ logger.setLevel(logging.INFO)
 ssm = boto3.client('ssm')
 
 settings_schema = Schema({
-    Optional('All', default=False): bool,
+    Optional('All', default=False): encoded_bool,
     Optional('Domains', default=[]): [str],
     Optional('Emails', default=[]): [str]
 })

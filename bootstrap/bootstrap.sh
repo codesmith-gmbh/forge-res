@@ -45,10 +45,10 @@ function deployForgeResources () {
     PYTHON_LAMBDA_LAYER_KEY=.forgeResources/${VERSION}/layer.zip
 
     rm -fr dist
-    mkdir -p dist/layer/python/codesmith/common
+    mkdir -p dist/layer/python/codesmith/
     pipenv lock -r > dist/requirements.txt
     pipenv run pip install -t dist/layer/python -r dist/requirements.txt
-    cp -R codesmith/common dist/layer/python/codesmith/common
+    cp -R codesmith/common dist/layer/python/codesmith/
 
     cd dist/layer
     zip -r layer.zip .
