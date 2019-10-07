@@ -174,7 +174,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       AutoPublishAlias: live
-      CodeUri: ../../dist/dnsCertificate_linux_amd64
+      CodeUri: ../../codesmith/CloudFormation/DnsCertificate
       Description: Cloudformation Custom Resource for SSL Certificates validated via DNS.
       Environment:
         Variables:
@@ -184,7 +184,7 @@ Resources:
           Type: SNS
           Properties:
             Topic: !Ref DnsCertificateSNSTopic
-      Handler: dnsCertificate
+      Handler: dns_certificate.handler
       MemorySize: 128
       Policies:
         - Version: '2012-10-17'
@@ -229,15 +229,15 @@ Resources:
               Resource:
                 - "arn:aws:ssm:*:*:parameter/codesmith-forge/DnsCertificateSnsMessageId/*"
       ReservedConcurrentExecutions: 1
-      Runtime: go1.x
+      Runtime: python3.7
       Timeout: 300
   DnsCertificateCheckFunction:
     Type: AWS::Serverless::Function
     Properties:
       AutoPublishAlias: live
-      CodeUri: ../../dist/dnsCertificateCheck_linux_amd64
+      CodeUri: ../../codesmith/CloudFormation/DnsCertificateCheck
       Description: Function to check a certificate inside a step functions state machine
-      Handler: dnsCertificateCheck
+      Handler: dns_certificate_check.handler
       MemorySize: 128
       Policies:
         - Version: '2012-10-17'
@@ -251,7 +251,7 @@ Resources:
                 - "acm:ListTagsForCertificate"
               Resource:
                 - "*"
-      Runtime: go1.x
+      Runtime: python3.7
       Timeout: 300
   DnsCertificateWaitStateMachineRole:
     Type: AWS::IAM::Role
