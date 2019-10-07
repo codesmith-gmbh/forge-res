@@ -3,10 +3,9 @@ import logging
 import boto3
 from box import Box
 from crhelper import CfnResource
-from schema import And, Schema
 
 from codesmith.common.cfn import resource_properties, physical_resource_id
-from codesmith.common.schema import not_empty
+from codesmith.common.schema import non_empty_string, tolerant_schema
 
 helper = CfnResource()
 logger = logging.getLogger(__name__)
@@ -14,8 +13,8 @@ logger.setLevel(logging.INFO)
 
 rds = boto3.client('rds')
 
-properties_schema = Schema({
-    'DbInstanceIdentifier': And(str, not_empty, 'not empty string for DbInstanceIdentifier')
+properties_schema = tolerant_schema({
+    'DbInstanceIdentifier': non_empty_string
 })
 
 

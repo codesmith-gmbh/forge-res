@@ -4,20 +4,20 @@ import logging
 import boto3
 from box import Box
 from crhelper import CfnResource
-from schema import And, Optional, Schema
+from schema import Optional
 
 import codesmith.common.naming as naming
 from codesmith.common.cfn import resource_properties
-from codesmith.common.schema import encoded_bool, not_empty
+from codesmith.common.schema import encoded_bool, non_empty_string, tolerant_schema
 from codesmith.common.ssm import put_string_parameter, silent_delete_parameter_from_event
 
 helper = CfnResource()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-properties_schema = Schema({
-    'UserPoolId': And(str, not_empty, error='not empty string for UserPoolId'),
-    'UserPoolClientId': And(str, not_empty, error='not empty string for UserPoolClientId'),
+properties_schema = tolerant_schema({
+    'UserPoolId': non_empty_string,
+    'UserPoolClientId': non_empty_string,
     Optional('All', default=False): encoded_bool,
     Optional('Domains', default=[]): [str],
     Optional('Emails', default=[]): [str]

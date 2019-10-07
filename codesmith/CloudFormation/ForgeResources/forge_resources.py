@@ -1,7 +1,6 @@
 import structlog
-from schema import Schema
 
-from codesmith.common.schema import box, non_empty_string
+from codesmith.common.schema import box, non_empty_string, tolerant_schema
 
 log = structlog.get_logger()
 
@@ -55,7 +54,7 @@ def transform(fragment):
             pass
 
 
-REDIRECTOR_PROPERTIES_SCHEMA = Schema({
+REDIRECTOR_PROPERTIES_SCHEMA = tolerant_schema({
     'CertificateArn': non_empty_string,
     'DomainName': non_empty_string,
     'Location': non_empty_string,

@@ -14,7 +14,7 @@ logger.setLevel(logging.INFO)
 
 ssm = boto3.client('ssm')
 
-settings_schema = Schema({
+settings_schema = tolerant_schema({
     Optional('All', default=False): encoded_bool,
     Optional('Domains', default=[]): [str],
     Optional('Emails', default=[]): [str]

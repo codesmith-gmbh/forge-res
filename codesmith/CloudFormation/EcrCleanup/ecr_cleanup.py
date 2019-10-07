@@ -3,11 +3,10 @@ import logging
 import boto3
 from box import Box
 from crhelper import CfnResource
-from schema import And, Schema
 
 import codesmith.common.cfn as cfn
 from codesmith.common.cfn import logical_resource_id, resource_properties
-from codesmith.common.schema import not_empty
+from codesmith.common.schema import non_empty_string, tolerant_schema
 
 helper = CfnResource()
 logger = logging.getLogger(__name__)
@@ -16,8 +15,8 @@ logger.setLevel(logging.INFO)
 ecr = boto3.client('ecr')
 cf = boto3.client('cloudformation')
 
-properties_schema = Schema({
-    'Repository': And(str, not_empty, 'not empty string for Repository')
+properties_schema = tolerant_schema({
+    'Repository': non_empty_string
 })
 
 

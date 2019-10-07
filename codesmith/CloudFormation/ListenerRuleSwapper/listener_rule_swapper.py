@@ -2,11 +2,10 @@ import logging
 
 import boto3
 from crhelper import CfnResource
-from schema import Schema
 
 import codesmith.common.cfn as cfn
 from codesmith.common.cfn import logical_resource_id, resource_properties
-from codesmith.common.schema import box, non_empty_string
+from codesmith.common.schema import box, non_empty_string, tolerant_schema
 
 helper = CfnResource()
 logger = logging.getLogger(__name__)
@@ -15,7 +14,7 @@ logger.setLevel(logging.INFO)
 elb = boto3.client('elbv2')
 cf = boto3.client('cloudformation')
 
-properties_schema = Schema({
+properties_schema = tolerant_schema({
     'ListenerArn': non_empty_string,
     'Rule1Arn': non_empty_string,
     'Rule2Arn': non_empty_string,

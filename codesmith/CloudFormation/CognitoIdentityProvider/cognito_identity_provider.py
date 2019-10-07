@@ -3,10 +3,9 @@ import logging
 import boto3
 from box import Box
 from crhelper import CfnResource
-from schema import And, Schema
 
 from codesmith.common.cfn import resource_properties, old_resource_properties, physical_resource_id
-from codesmith.common.schema import not_empty
+from codesmith.common.schema import non_empty_string, tolerant_schema
 
 helper = CfnResource()
 logger = logging.getLogger(__name__)
@@ -15,12 +14,12 @@ logger.setLevel(logging.INFO)
 ssm = boto3.client('ssm')
 idp = boto3.client('cognito-idp')
 
-properties_schema = Schema({
-    'UserPoolId': And(str, not_empty, error='not empty string for UserPoolId'),
-    'ProviderName': And(str, not_empty, error='not empty string for ProviderName'),
-    'ClientIdParameter': And(str, not_empty, error='not empty string for ClientIdParameter'),
-    'ClientSecretParameter': And(str, not_empty, error='not empty string for ClientSecretParameter'),
-    'ProviderType': And(str, not_empty, error='not empty string for ProviderType'),
+properties_schema = tolerant_schema({
+    'UserPoolId': non_empty_string,
+    'ProviderName': non_empty_string,
+    'ClientIdParameter': non_empty_string,
+    'ClientSecretParameter': non_empty_string,
+    'ProviderType': non_empty_string,
     'AuthorizeScopes': [str],
     'AttributeMapping': {str: str}
 })

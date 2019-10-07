@@ -3,12 +3,12 @@ import logging
 import boto3
 from box import Box
 from crhelper import CfnResource
-from schema import And, Optional, Schema
+from schema import Optional
 
 from codesmith.common import naming
 from codesmith.common.calc import calculator, SSM_PARAMETER_DESCRIPTION
 from codesmith.common.cfn import resource_properties
-from codesmith.common.schema import not_empty
+from codesmith.common.schema import non_empty_string, tolerant_schema
 from codesmith.common.ssm import silent_delete_parameter_from_event, put_string_parameter
 
 helper = CfnResource()
@@ -18,9 +18,9 @@ logger.setLevel(logging.INFO)
 ssm = boto3.client('ssm')
 expression_parser = calculator(1)
 
-properties_schema = Schema({
-    'SequenceName': And(str, not_empty, error='not empty string for SequenceName'),
-    Optional('Expression'): And(str, not_empty, error='not empty string for Expression')
+properties_schema = tolerant_schema({
+    'SequenceName': non_empty_string,
+    Optional('Expression'): non_empty_string
 })
 
 

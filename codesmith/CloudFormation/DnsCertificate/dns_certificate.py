@@ -4,14 +4,14 @@ import time
 
 import boto3
 import structlog
-from schema import Optional, Schema
+from schema import Optional
 
 import codesmith.common.cfn as cfn
 import codesmith.common.common as c
 import codesmith.common.naming as naming
 import codesmith.common.ssm as cssm
 from codesmith.common.cfn import resource_properties
-from codesmith.common.schema import box, encoded_bool, non_empty_string
+from codesmith.common.schema import box, encoded_bool, non_empty_string, tolerant_schema
 
 STATE_MACHINE_ARN = os.environ.get('STATE_MACHINE_ARN')
 
@@ -25,7 +25,7 @@ step = boto3.client('stepfunctions')
 # 1. Property validation
 #
 
-properties_schema = Schema({
+properties_schema = tolerant_schema({
     'DomainName': non_empty_string,
     Optional('Region'): non_empty_string,
     Optional('SubjectAlternativeNames', default=[]): [str],
