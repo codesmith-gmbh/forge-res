@@ -16,10 +16,10 @@ elb = boto3.client('elbv2')
 cf = boto3.client('cloudformation')
 
 properties_schema = Schema({
-    'ListenerArn': non_empty_string(field_name='ListenerArn'),
-    'Rule1Arn': non_empty_string(field_name='Rule1Arn'),
-    'Rule2Arn': non_empty_string(field_name='Rule2Arn'),
-    'Trigger': non_empty_string(field_name='Trigger')
+    'ListenerArn': non_empty_string,
+    'Rule1Arn': non_empty_string,
+    'Rule2Arn': non_empty_string,
+    'Trigger': non_empty_string
 })
 
 

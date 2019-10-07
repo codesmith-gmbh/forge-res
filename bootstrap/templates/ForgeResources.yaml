@@ -344,10 +344,10 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       AutoPublishAlias: live
-      CodeUri: ../../dist/forgeResources_linux_amd64
-      Handler: forgeResources
+      CodeUri: ../../codesmith/CloudFormation/ForgeResources
+      Handler: forge_resources.handler
       MemorySize: 512
-      Runtime: go1.x
+      Runtime: python3.7
       Timeout: 300
   ForgeResourcesPermission:
     Type: AWS::Lambda::Permission

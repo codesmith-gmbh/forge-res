@@ -1,4 +1,4 @@
-from schema import And, Schema
+from schema import And
 from box import Box
 
 
