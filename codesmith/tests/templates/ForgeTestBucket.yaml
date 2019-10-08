@@ -1,0 +1,13 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: A bucket for run integration tests for the forge
+Resources:
+  TestBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      VersioningConfiguration:
+        Status: Enabled
+Outputs:
+  TestBucket:
+    Value: !Ref TestBucket
+    Export:
+      Name: !Sub "${AWS::StackName}-TestBucket"

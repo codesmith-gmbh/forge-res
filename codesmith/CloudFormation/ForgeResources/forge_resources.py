@@ -22,7 +22,7 @@ SERVICE_TOKENS = {
 
 
 def handler(event, _):
-    log.msg('', event=event)
+    log.msg('', cf_event=event)
     fragment = event['fragment']
     transform(fragment)
     return {
@@ -39,7 +39,7 @@ def transform(fragment):
         service_token = SERVICE_TOKENS.get(type)
         if service_token:
             val['Type'] = 'AWS::CloudFormation::CustomResource'
-            val['Properties']['ServiceToken'] = {'Fn::ImportValue', service_token}
+            val['Properties']['ServiceToken'] = {'Fn::ImportValue': service_token}
         elif type == 'Forge::ApiGateway::Redirector':
             del resources[name]
             redirector_properties = validate_properties(val['Properties'])
@@ -139,7 +139,7 @@ def domain_name_redirector_api_resource(redirector_name, properties):
     return domain_name(redirector_name), resource
 
 
-def base_path_mapping_redirector_api_resource(redirector_name, properties):
+def base_path_mapping_redirector_api_resource(redirector_name, _):
     resource = {
         'Type': 'AWS::ApiGateway::DomainName',
         'Properties': {

@@ -62,8 +62,8 @@ def delete_objects(properties):
     )
 
     while True:
-        versions = out['Versions']
-        if len(versions) > 0:
+        versions = out.get('Versions')
+        if versions:
             objects = [{'Key': v['Key'],
                         'VersionId': v['VersionId']} for v in versions]
             s3.delete_objects(

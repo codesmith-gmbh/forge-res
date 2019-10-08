@@ -2,7 +2,7 @@
 
 set -eu -o pipefail
 
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null && pwd)"
 VERSION=$(git describe --match "v*" --dirty=--DIRTY-- --always | sed 's:^v\(.*\)$:\1:')
 
 echo "Bootstrap in region: ${AWS_REGION}"
@@ -12,7 +12,7 @@ CLOUDFORMATION_ROLE_ARN=$(aws --region us-east-1 cloudformation describe-stacks 
 FORGE_DOMAIN_NAME=$(aws --region us-east-1 cloudformation describe-stacks --stack-name ForgeBootstrap | jq -r '.Stacks[0].Outputs | map(select(.OutputKey=="ForgeDomainName"))[0].OutputValue')
 PYTHON_LAMBDA_LAYER_NAME=ForgeResourcesLayer
 
-function deployForgeIam () {
+function deployForgeIam() {
     echo "# Deploying ForgeIam in the ${1} region"
     cd ${SCRIPT_DIR}
     aws --region ${1} cloudformation deploy \
@@ -24,7 +24,7 @@ function deployForgeIam () {
     echo ""
 }
 
-function deployForgeBuckets () {
+function deployForgeBuckets() {
     echo "# Deploying ForgeBuckets in the ${1} region"
     cd ${SCRIPT_DIR}
     aws --region ${1} cloudformation deploy \
@@ -34,27 +34,38 @@ function deployForgeBuckets () {
         --role-arn ${CLOUDFORMATION_ROLE_ARN} \
         --no-fail-on-empty-changeset \
         --parameter-overrides \
-            ForgeDomainName=${FORGE_DOMAIN_NAME}
+        ForgeDomainName=${FORGE_DOMAIN_NAME}
     echo ""
 }
 
-function deployForgeResources () {
+function deployForgeResources() {
     echo "# Create Python lambda layer in the ${1} region"
     cd ${SCRIPT_DIR}/..
     S3_BUCKET=$(aws --region ${1} cloudformation describe-stacks --stack-name ForgeBuckets | jq -r '.Stacks[0].Outputs | map(select(.OutputKey=="ArtifactsBucketName"))[0].OutputValue')
-    PYTHON_LAMBDA_LAYER_KEY=.forgeResources/${VERSION}/layer.zip
+    PIPLOCK_HASH=$(shasum -a 256 Pipfile.lock | cut -d " " -f 1)
+    COMMON_CODE_HASH=$(find codesmith/common -type f -print0 | xargs -0 shasum -a 256 | sort -k 2 | shasum -a 256 | cut -d " " -f 1)
+    PYTHON_LAMBDA_LAYER_HASH="${PIPLOCK_HASH}${COMMON_CODE_HASH}"
+    echo "Python Layer Hash: ${PYTHON_LAMBDA_LAYER_HASH}"
 
     rm -fr dist
-    mkdir -p dist/layer/python/codesmith/
-    pipenv lock -r > dist/requirements.txt
-    pipenv run pip install -t dist/layer/python -r dist/requirements.txt
-    cp -R codesmith/common dist/layer/python/codesmith/
 
-    cd dist/layer
-    zip -r layer.zip .
-    aws s3 cp layer.zip s3://${S3_BUCKET}/${PYTHON_LAMBDA_LAYER_KEY}
-    PYTHON_LAMBDA_LAYER_ARN=$(aws --region ${1} lambda publish-layer-version --layer-name ${PYTHON_LAMBDA_LAYER_NAME} --content S3Bucket=${S3_BUCKET},S3Key=${PYTHON_LAMBDA_LAYER_KEY} --compatible-runtimes python3.7 | jq -r '.LayerVersionArn')
+    PYTHON_LAMBDA_LAYER_KEY=.forgeResources/lambdaLayer/${PYTHON_LAMBDA_LAYER_HASH}
+    NEEDS_CREATION=$(aws --region ${1} s3api head-object --bucket ${S3_BUCKET} --key ${PYTHON_LAMBDA_LAYER_KEY} || echo 'yes')
+    if [[ "$NEEDS_CREATION"='yes' ]]; then
+        mkdir -p dist/layer/python/codesmith/
+        pipenv lock -r >dist/requirements.txt
+        pipenv run pip install -t dist/layer/python -r dist/requirements.txt
+        cp -R codesmith/common dist/layer/python/codesmith/
 
+        cd dist/layer
+        echo "# creating a new python layer"
+        zip -r -X layer.zip .
+        aws s3 cp layer.zip s3://${S3_BUCKET}/${PYTHON_LAMBDA_LAYER_KEY}
+        PYTHON_LAMBDA_LAYER_ARN=$(aws --region ${1} lambda publish-layer-version --layer-name ${PYTHON_LAMBDA_LAYER_NAME} --content S3Bucket=${S3_BUCKET},S3Key=${PYTHON_LAMBDA_LAYER_KEY} --compatible-runtimes python3.7 | jq -r '.LayerVersionArn')
+    else
+        echo "# reusing the previous python layer"
+        PYTHON_LAMBDA_LAYER_ARN=$(aws lambda --region ${1} list-layer-versions --layer-name ${PYTHON_LAMBDA_LAYER_NAME} | jq -r ".LayerVersions[0].LayerVersionArn")
+    fi
 
     echo "# Deploying ForgeResources in the ${1} region"
     cd ${SCRIPT_DIR}/..
@@ -73,12 +84,13 @@ function deployForgeResources () {
         --role-arn ${CLOUDFORMATION_ROLE_ARN} \
         --no-fail-on-empty-changeset \
         --parameter-overrides \
-            Version=${VERSION} \
-            SsmKmsKeyArn=${SSM_KMS_KEY_ARN} \
-            PythonLambdaLayerArn=${PYTHON_LAMBDA_LAYER_ARN}
+        Version=${VERSION} \
+        SsmKmsKeyArn=${SSM_KMS_KEY_ARN} \
+        PythonLambdaLayerArn=${PYTHON_LAMBDA_LAYER_ARN} \
+        PythonLambdaLayerHash=${PYTHON_LAMBDA_LAYER_HASH}
 }
 
-function deployForgeLogsMaintenance () {
+function deployForgeLogsMaintenance() {
     echo "# Deploying ForgeLogsMaintenance in the ${1} region"
     cd ${SCRIPT_DIR}/..
     S3_BUCKET=$(aws --region ${1} cloudformation describe-stacks --stack-name ForgeBuckets | jq -r '.Stacks[0].Outputs | map(select(.OutputKey=="ArtifactsBucketName"))[0].OutputValue')
@@ -96,11 +108,11 @@ function deployForgeLogsMaintenance () {
         --role-arn ${CLOUDFORMATION_ROLE_ARN} \
         --no-fail-on-empty-changeset \
         --parameter-overrides \
-            Version=${VERSION}
+        Version=${VERSION}
     echo ""
 }
 
-function main () {
+function main() {
     echo "# Deploying the forge in the us-east-1 region"
 
     deployForgeIam "us-east-1"
@@ -117,15 +129,15 @@ function main () {
     fi
 }
 
-function dev () {
+function dev() {
     deployForgeResources "us-east-1"
 }
 
 case $1 in
-	"main") main;;
-	"dev") dev;;
-	*)
-		echo "Unknown command: ${1}"
-		exit 1
-		;;
+"main") main ;;
+"dev") dev ;;
+*)
+    echo "Unknown command: ${1}"
+    exit 1
+    ;;
 esac

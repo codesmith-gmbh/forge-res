@@ -6,10 +6,12 @@ Parameters:
     Type: String
   SsmKmsKeyArn:
     Type: String
+  PythonLambdaLayerHash:
+    Type: String
   PythonLambdaLayerArn:
     Type: String
 Resources:
-  # 1. S3 Release Cleanup
+  # 1. S3 Release Cleanup Forge resources and Python layer
   S3ReleaseCleanup:
     Type: Custom::S3Cleanup
     Properties:
@@ -17,11 +19,17 @@ Resources:
       ActiveOnlyOnStackDeletion: false
       Bucket: !ImportValue ForgeBuckets-ArtifactsBucketName
       Prefix: !Sub ".forgeResources/${Version}"
+  S3PythonLambdaLayerCleanup:
+    Type: Custom::S3Cleanup
+    Properties:
+      ServiceToken: !GetAtt S3CleanupFunction.Arn
+      ActiveOnlyOnStackDeletion: false
+      Bucket: !ImportValue ForgeBuckets-ArtifactsBucketName
+      Prefix: !Sub ".forgeResources/pythonLayer/${PythonLambdaLayerHash}"
   # 2. Cloudformation
   ApiKeyFunction:
     Type: AWS::Serverless::Function
     Properties:
-      AutoPublishAlias: live
       CodeUri: ../../codesmith/CloudFormation/ApiKey/
       Description: Cloudformation Custom Resource for apg api keys for Cloudfront.
       Handler: api_key.handler
@@ -55,7 +63,6 @@ Resources:
   CogCondPreAuthSettingsFunction:
     Type: AWS::Serverless::Function
     Properties:
-      AutoPublishAlias: live
       CodeUri: ../../codesmith/CloudFormation/CogCondPreAuthSettings/
       Description: Cloudformation Custom Resource for CogCondPreAuthSettings
       Handler: cog_cond_pre_auth_settings.handler
@@ -85,7 +92,6 @@ Resources:
   CognitoUserPoolDomainFunction:
     Type: AWS::Serverless::Function
     Properties:
-      AutoPublishAlias: live
       CodeUri: ../../codesmith/CloudFormation/CognitoUserPoolDomain/
       Description: Cloudformation Custom Resource for Cognito User Pool Domain
       Handler: cognito_user_pool_domain.handler
@@ -113,7 +119,6 @@ Resources:
   CognitoIdentityProviderFunction:
     Type: AWS::Serverless::Function
     Properties:
-      AutoPublishAlias: live
       CodeUri: ../../codesmith/CloudFormation/CognitoIdentityProvider/
       Description: Cloudformation Custom Resource for cognito user pool idendity provider
       Handler: cognito_identity_provider.handler
@@ -150,7 +155,6 @@ Resources:
   DbInstanceResourceIdFunction:
     Type: AWS::Serverless::Function
     Properties:
-      AutoPublishAlias: live
       CodeUri: ../../codesmith/CloudFormation/DbInstanceResourceId/
       Description: Cloudformation Custom Resource to retrieve the resource id of a rds database instance
       Handler: db_instance_resource_id.handler
@@ -179,7 +183,6 @@ Resources:
   DnsCertificateFunction:
     Type: AWS::Serverless::Function
     Properties:
-      AutoPublishAlias: live
       CodeUri: ../../codesmith/CloudFormation/DnsCertificate/
       Description: Cloudformation Custom Resource for SSL Certificates validated via DNS.
       Environment:
@@ -242,7 +245,6 @@ Resources:
   DnsCertificateCheckFunction:
     Type: AWS::Serverless::Function
     Properties:
-      AutoPublishAlias: live
       CodeUri: ../../codesmith/CloudFormation/DnsCertificateCheck/
       Description: Function to check a certificate inside a step functions state machine
       Handler: dns_certificate_check.handler
@@ -328,7 +330,6 @@ Resources:
   EcrCleanupFunction:
     Type: AWS::Serverless::Function
     Properties:
-      AutoPublishAlias: live
       CodeUri: ../../codesmith/CloudFormation/EcrCleanup/
       Description: Cloudformation Custom Resource for ECR Cleaning
       Handler: ecr_cleanup.handler
@@ -355,7 +356,6 @@ Resources:
   ForgeResourcesFunction:
     Type: AWS::Serverless::Function
     Properties:
-      AutoPublishAlias: live
       CodeUri: ../../codesmith/CloudFormation/ForgeResources/
       Handler: forge_resources.handler
       Layers:
@@ -378,7 +378,6 @@ Resources:
   ListenerRuleSwapperFunction:
     Type: AWS::Serverless::Function
     Properties:
-      AutoPublishAlias: live
       CodeUri: ../../codesmith/CloudFormation/ListenerRuleSwapper/
       Description: Cloudformation Custom Resource to swap 2 rules during the update of a stack.
       Handler: listener_rule_swapper.handler
@@ -412,7 +411,6 @@ Resources:
   S3CleanupFunction:
     Type: AWS::Serverless::Function
     Properties:
-      AutoPublishAlias: live
       CodeUri: ../../codesmith/CloudFormation/S3Cleanup/
       Description: Cloudformation Custom Resource for S3 Bucket Cleaning
       Handler: s3_cleanup.handler
@@ -439,7 +437,6 @@ Resources:
   SequenceFunction:
     Type: AWS::Serverless::Function
     Properties:
-      AutoPublishAlias: live
       CodeUri: ../../codesmith/CloudFormation/Sequence/
       Description: Cloudformation Custom Resource for Sequences
       Handler: sequence.handler
@@ -471,7 +468,6 @@ Resources:
   SequenceValueFunction:
     Type: AWS::Serverless::Function
     Properties:
-      AutoPublishAlias: live
       CodeUri: ../../codesmith/CloudFormation/SequenceValue/
       Description: Cloudformation Custom Resource for Sequence Values
       Handler: sequence_value.process_event
@@ -503,7 +499,6 @@ Resources:
   PipelineTriggerFunction:
     Type: AWS::Serverless::Function
     Properties:
-      AutoPublishAlias: live
       CodeUri: ../../codesmith/CodeCommit/PipelineTrigger/
       Runtime: python3.7
       Handler: pipline_trigger.handler
@@ -534,7 +529,6 @@ Resources:
   CogCondPreAuthFunction:
     Type: AWS::Serverless::Function
     Properties:
-      AutoPublishAlias: live
       CodeUri: ../../codesmith/Cognito/CogCondPreAuth/
       Handler: cog_cond_pre_auth.handler
       Layers:
@@ -616,3 +610,7 @@ Outputs:
     Value: !Ref Version
     Export:
       Name: !Sub "${AWS::StackName}-Version"
+  PythonLambdaLayerHash:
+    Value: !Ref PythonLambdaLayerHash
+    Export:
+      Name: !Sub "${AWS::StackName}-PythonLambdaLayerHash"
