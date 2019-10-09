@@ -1,6 +1,6 @@
 import structlog
 
-from codesmith.common.schema import box, non_empty_string, tolerant_schema
+from codesmith.common.schema import box, tolerant_schema
 
 log = structlog.get_logger()
 
@@ -34,14 +34,15 @@ def handler(event, _):
 
 def transform(fragment):
     resources = fragment['Resources']
+    new_resources = {}
     for (name, val) in resources.items():
-        type = val['Type']
-        service_token = SERVICE_TOKENS.get(type)
+        resource_type = val['Type']
+        service_token = SERVICE_TOKENS.get(resource_type)
         if service_token:
             val['Type'] = 'AWS::CloudFormation::CustomResource'
             val['Properties']['ServiceToken'] = {'Fn::ImportValue': service_token}
-        elif type == 'Forge::ApiGateway::Redirector':
-            del resources[name]
+            new_resources[name] = val
+        elif resource_type == 'Forge::ApiGateway::Redirector':
             redirector_properties = validate_properties(val['Properties'])
             for generator in [
                 api_gateway_redictor_api_resource,
@@ -49,15 +50,16 @@ def transform(fragment):
                 base_path_mapping_redirector_api_resource
             ]:
                 (resource_name, resource_val) = generator(name, redirector_properties)
-                resources[resource_name] = resource_val
+                new_resources[resource_name] = resource_val
         else:
-            pass
+            new_resources[name] = val
+    fragment['Resources'] = new_resources
 
 
 REDIRECTOR_PROPERTIES_SCHEMA = tolerant_schema({
-    'CertificateArn': non_empty_string,
-    'DomainName': non_empty_string,
-    'Location': non_empty_string,
+    'CertificateArn': object,
+    'DomainName': object,
+    'Location': object,
 })
 
 STAGE_NAME = 'redirector'
@@ -72,13 +74,13 @@ def api_gateway_redictor_api_resource(redirector_name, properties):
     resource = {
         'Type': 'AWS::Serverless::Api',
         'Properties': {
-            'Name': {'Fn::Sub', '${AWS::StackName}-' + name},
+            'Name': {'Fn::Sub': '${AWS::StackName}-' + name},
             'StageName': STAGE_NAME,
             'DefinitionBody': {
                 'swagger': '2.0',
                 'info': {'version': '1.0'},
                 'schemes': ['https'],
-                'path': {
+                'paths': {
                     '/': {
                         'get': {
                             'consumes': ['application/json'],
@@ -141,7 +143,7 @@ def domain_name_redirector_api_resource(redirector_name, properties):
 
 def base_path_mapping_redirector_api_resource(redirector_name, _):
     resource = {
-        'Type': 'AWS::ApiGateway::DomainName',
+        'Type': 'AWS::ApiGateway::BasePathMapping',
         'Properties': {
             'DomainName': {'Ref': domain_name(redirector_name)},
             'RestApiId': {'Ref': api_name(redirector_name)},
