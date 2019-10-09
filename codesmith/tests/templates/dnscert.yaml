@@ -1,11 +1,16 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: Test for DnsCertificateRecordSetGroup
+Transform: [ForgeResources]
+Description: Test for DnsCertificate
 Resources:
   Certificate:
-    Type: Custom::DnsCertificate
+    Type: Forge::CertificateManager::DnsCertificate
     Properties:
-      ServiceToken: !ImportValue ForgeResources-DnsCertificate
       HostedZoneName: codesmith.ch.
       DomainName: test-forge.codesmith.ch
       SubjectAlternativeNames:
         - test-forge-san.codesmith.ch
+Outputs:
+  CertificateArn:
+    Value: !Ref Certificate
+    Export:
+      Name: !Sub "${AWS::StackName}-CertificateArn"

@@ -11,7 +11,7 @@ log = structlog.get_logger()
 
 
 def handler(event, _):
-    log.msg('', event=event)
+    log.msg('', sf_event=event)
     round_f = event.get("Round")
     round_index = int(round_f) if round_f else 0
     check = check_certificate(event, round_index)
@@ -25,7 +25,7 @@ def check_certificate(event, round_index):
         if event['RequestType'] == 'Delete':
             cfn.send_success(event)
             return True
-        certificate_arn = cfn.resource_properties(event)['CertificateArn']
+        certificate_arn = cfn.physical_resource_id(event)
         if round_index >= MAX_ROUND_COUNT:
             cfn.send_failed(event, "certificate {} did not stablise".format(certificate_arn))
             return True

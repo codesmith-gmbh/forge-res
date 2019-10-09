@@ -17,10 +17,8 @@ class TestS3Cleanup(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.cf = boto3.client('cloudformation')
-        cls.s3 = boto3.client('s3')
-        if 'us-east-1' != cls.cf._client_config.region_name:
-            raise RuntimeError('Tests must run in us-east-1')
+        cls.cf = us_east_1_client('cloudformation')
+        cls.s3 = us_east_1_client('s3')
         with open('templates/s3.yaml') as f:
             stack_name = cls.__name__ + random_string(15)
             stack = cls.cf.create_stack(
@@ -34,14 +32,6 @@ class TestS3Cleanup(unittest.TestCase):
             )
         cls.stack_id = stack['StackId']
         wait_for_stack_to_stabilize(cls.cf, cls.stack_id)
-
-    @classmethod
-    def setUpClassTest(cls):
-        cls.cf = boto3.client('cloudformation')
-        cls.s3 = boto3.client('s3')
-        if 'us-east-1' != cls.cf._client_config.region_name:
-            raise RuntimeError('Tests must run in us-east-1')
-        cls.stack_id = 'Put in to test'
 
     @classmethod
     def tearDownClass(cls):
@@ -75,6 +65,44 @@ class TestS3Cleanup(unittest.TestCase):
             Bucket=test_bucket,
             Key='test/1/testfile.txt'
         ))
+
+
+class TestDnsCertificate(unittest.TestCase):
+    cf = None
+    acm = None
+    stack_id = None
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.cf = us_east_1_client('cloudformation')
+        cls.acm = us_east_1_client('acm')
+        with open('templates/dnscert.yaml') as f:
+            stack_name = cls.__name__ + random_string(15)
+            stack = cls.cf.create_stack(
+                StackName=stack_name,
+                TemplateBody=f.read(),
+                Capabilities=['CAPABILITY_AUTO_EXPAND']
+            )
+        cls.stack_id = stack['StackId']
+        wait_for_stack_to_stabilize(cls.cf, cls.stack_id)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.cf.delete_stack(StackName=cls.stack_id)
+        wait_for_stack_to_stabilize(cls.cf, cls.stack_id)
+
+    def test_certificate_creation(self):
+        certificate_arn = tcfn.find_output(TestDnsCertificate.cf, stack_id=TestDnsCertificate.stack_id,
+                                           output_key='CertificateArn')
+        certificate = TestDnsCertificate.acm.describe_certificate(CertificateArn=certificate_arn)
+        self.assertIsNotNone(certificate)
+
+
+def us_east_1_client(service):
+    client = boto3.client(service)
+    if 'us-east-1' != client._client_config.region_name:
+        raise RuntimeError('Tests must run in us-east-1')
+    return client
 
 
 def random_string(length):

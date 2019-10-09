@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Transform: [ForgeResources]
-Description: Test for DnsCertificateRecordSetGroup
+Description: Test for S3 Cleanup Resource
 Parameters:
   Version:
     Type: String

@@ -50,7 +50,7 @@ def send_completion(event, status, *, reason='', data=None):
     response_url = event['ResponseURL']
     response_body = {
         'Status': status,
-        'PhysicalResourceId': physical_resource_id(event),
+        'PhysicalResourceId': physical_resource_id(event) or 'error',
         'StackId': stack_id(event),
         'RequestId': event['RequestId'],
         'LogicalResourceId': logical_resource_id(event),

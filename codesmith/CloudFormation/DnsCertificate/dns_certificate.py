@@ -1,6 +1,7 @@
 import json
 import os
 import time
+import traceback
 
 import boto3
 import structlog
@@ -109,7 +110,11 @@ def process_record(record):
 
     try:
         if event_type == 'Create':
-            create_certificate(message_id, event)
+            try:
+                create_certificate(message_id, event)
+            except CertificateError as e:
+                event['PhysicalResourceId'] = e.certificate_arn
+                raise e
         elif event_type == 'Update':
             update_certificate(message_id, event)
         elif event_type == 'Delete':
@@ -117,6 +122,8 @@ def process_record(record):
         else:
             raise ValueError('Unknown event type: {}'.format(event_type))
     except Exception as e:
+        log.msg('Error while processing the event', cfn_event=event, error=e)
+        print(traceback.format_exc())
         cfn.send_failed(event, str(e))
 
 
@@ -125,7 +132,8 @@ def process_record(record):
 #
 def delete_certificate(event):
     properties = validate_properties(resource_properties(event))
-    certificate_arn = cfn.physical_resource_id(properties)
+    certificate_arn = cfn.physical_resource_id(event)
+    log.msg('deleting certificate', certificate_arn=certificate_arn, properties=properties)
     # We delete only if the certificate has been properly created before.
     if c.is_certificate_arn(certificate_arn):
         cert_proc = CertificateProcessor(certificate_arn=certificate_arn, properties=properties)
@@ -144,14 +152,22 @@ def delete_certificate(event):
 # 3.2 Create the certificate
 #
 
+class CertificateError(RuntimeError):
+    def __init__(self, certificate_arn):
+        self.certificate_arn = certificate_arn
+
+
 def create_certificate(sns_message_id, event):
     if should_skip_message(sns_message_id, event):
         return
     properties = validate_properties(resource_properties(event))
     cert_proc = CertificateProcessor(None, properties)
     certificate_arn = cert_proc.create_certificate()
-    cert_proc.create_record_set_group()
-    start_wait_state_machine(certificate_arn, sns_message_id, event)
+    try:
+        cert_proc.create_record_set_group()
+        start_wait_state_machine(certificate_arn, sns_message_id, event)
+    except Exception as e:
+        raise CertificateError(certificate_arn) from e
 
 
 #
@@ -273,6 +289,7 @@ class CertificateProcessor:
     COMMENT = "by Codesmith Forge DnsCertificateRecordSetGroup custom resource"
 
     def create_record_set_group(self):
+        log.msg('Creating DNS records for the Certificate', CertificateArn=self.certificate_arn)
         changes = self.generate_create_record_set_group_changes()
         self.execute_dns_records_batch(changes)
 
@@ -434,11 +451,12 @@ def delete_sns_message_ssm_parameter(event):
 # 6. Wait state machine
 #
 def start_wait_state_machine(certificate_arn, sns_message_id, event):
+    event['PhysicalResourceId'] = certificate_arn
     event['ResourceProperties']['CertificateArn'] = certificate_arn
     event_text = json.dumps(event)
     execution = step.start_execution(
-        Input=event_text,
-        Name=sns_message_id,
-        StateMachineArn=STATE_MACHINE_ARN
+        input=event_text,
+        name=sns_message_id,
+        stateMachineArn=STATE_MACHINE_ARN
     )
     log.msg('execution started', execution=execution)
