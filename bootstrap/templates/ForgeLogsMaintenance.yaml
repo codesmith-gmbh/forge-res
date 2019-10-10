@@ -20,7 +20,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       AutoPublishAlias: live
-      CodeUri: ../../LogsMaintenance
+      CodeUri: ../../codesmith/CloudwatchLogs/LogsMaintenance
       Environment:
         Variables:
           SNS_ALERT_TOPIC_ARN: !Ref AlertTopic
