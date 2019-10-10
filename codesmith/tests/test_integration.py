@@ -98,6 +98,39 @@ class TestDnsCertificate(unittest.TestCase):
         self.assertIsNotNone(certificate)
 
 
+class TestRedirector(unittest.TestCase):
+    cf = None
+    apg = None
+    stack_id = None
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.cf = us_east_1_client('cloudformation')
+        cls.apg = us_east_1_client('apigatewayv2')
+        with open('templates/redirector.yaml') as f:
+            stack_name = cls.__name__ + random_string(15)
+            stack = cls.cf.create_stack(
+                StackName=stack_name,
+                TemplateBody=f.read(),
+                Capabilities=['CAPABILITY_AUTO_EXPAND']
+            )
+        cls.stack_id = stack['StackId']
+        wait_for_stack_to_stabilize(cls.cf, cls.stack_id)
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        cls.cf.delete_stack(StackName=cls.stack_id)
+        wait_for_stack_to_stabilize(cls.cf, cls.stack_id)
+
+    def test_redirector_creation(self):
+        self.assertOutputNotNull('RedirectorApi')
+        self.assertOutputNotNull('RedirectorBasePathMapping')
+        self.assertOutputNotNull('RedirectorDomainName')
+
+    def assertOutputNotNull(self, output_key):
+        self.assertIsNotNone(tcfn.find_output(self.cf, stack_id=self.stack_id, output_key=output_key))
+
+
 def us_east_1_client(service):
     client = boto3.client(service)
     if 'us-east-1' != client._client_config.region_name:
@@ -114,6 +147,8 @@ def wait_for_stack_to_stabilize(cf, stack_id):
         stacks = cf.describe_stacks(StackName=stack_id)
         status = stacks['Stacks'][0]['StackStatus']
         if status.endswith('COMPLETE'):
+            if status.startswith('ROLLBACK'):
+                raise RuntimeError(f'Stack {stack_id} failed on status {status}')
             return
         elif status.endswith('FAILED'):
             raise RuntimeError(f'Stack {stack_id} failed on status {status}')

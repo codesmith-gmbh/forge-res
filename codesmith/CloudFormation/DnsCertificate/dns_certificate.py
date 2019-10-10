@@ -232,14 +232,17 @@ class CertificateProcessor:
         self.acm = self.acm_service()
 
     def create_certificate(self):
-        certificate = self.acm.request_certificate(
-            DomainName=self.properties['DomainName'],
-            ValidationMethod='DNS',
-            Options={
-                'CertificateTransparencyLoggingPreference': 'ENABLED'
-            },
-            SubjectAlternativeNames=self.properties.subject_alternative_names
-        )
+        args = {
+            'DomainName': self.properties['DomainName'],
+            'ValidationMethod': 'DNS',
+            'Options':
+                {
+                    'CertificateTransparencyLoggingPreference': 'ENABLED'
+                }
+        }
+        if self.properties.subject_alternative_names:
+            args['SubjectAlternativeNames'] = self.properties.subject_alternative_names
+        certificate = self.acm.request_certificate(**args)
         self.certificate_arn = certificate['CertificateArn']
         if self.properties.tags:
             self.acm.add_tags_to_certificate(

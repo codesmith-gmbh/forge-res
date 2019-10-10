@@ -120,7 +120,7 @@ class TestDnsCertificate(unittest.TestCase):
                     'test2.codesmith.ch',
                     'test3.codesmith.ch',
                 ],
-                'WithCaaRecords': False,
+                'WithCaaRecords': 'false',
                 'Region': 'us-east-1',
                 'Tags': {
                     'Key': 'Stan',

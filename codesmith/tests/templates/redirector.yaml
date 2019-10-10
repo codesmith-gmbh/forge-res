@@ -1,0 +1,34 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform:
+  - ForgeResources
+  - AWS::Serverless-2016-10-31
+Description: Test for DnsCertificate
+Resources:
+  Certificate:
+    Type: Forge::CertificateManager::DnsCertificate
+    Properties:
+      HostedZoneName: codesmith.ch.
+      DomainName: test-forge.codesmith.ch
+  Redirector:
+    Type: "Forge::ApiGateway::Redirector"
+    Properties:
+      DomainName: test-forge.codesmith.ch
+      Location: "https://codesmith.ch"
+      CertificateArn: !Ref Certificate
+Outputs:
+  CertificateArn:
+    Value: !Ref Certificate
+    Export:
+      Name: !Sub "${AWS::StackName}-CertificateArn"
+  RedirectorApi:
+    Value: !Ref RedirectorApi
+    Export:
+      Name: !Sub "${AWS::StackName}-RedirectorApi"
+  RedirectorDomainName:
+    Value: !Ref RedirectorDomainName
+    Export:
+      Name: !Sub "${AWS::StackName}-RedirectorDomainName"
+  RedirectorBasePathMapping:
+    Value: !Ref RedirectorBasePathMapping
+    Export:
+      Name: !Sub "${AWS::StackName}-RedirectorBasePathMapping"
