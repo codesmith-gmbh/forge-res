@@ -50,7 +50,8 @@ def create(event, _):
 
     helper.Data.update({
         'UserPoolId': properties.user_pool_id,
-        'CloudFrontDomain': cloudfront_domain,
+        'CloudFrontDomainName': cloudfront_domain,
+        'CloudFrontHostedZoneId': 'Z2FDTNDATAQYW2',
         'Domain': domain
     })
 

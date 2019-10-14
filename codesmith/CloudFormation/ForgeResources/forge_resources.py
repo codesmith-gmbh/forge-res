@@ -8,7 +8,6 @@ SERVICE_TOKENS = {
     'Forge::ApiGateway::ApiKey': 'ForgeResources-ApiKey',
     'Forge::Cognito::CondPreAuthSettings': 'ForgeResources-CogCondPreAuthSettings',
     'Forge::Cognito::IdentityProvider': 'ForgeResources-CognitoIdentityProvider',
-    'Forge::Cognito::UserPoolClientSettings': 'ForgeResources-CognitoUserPoolClientSettings',
     'Forge::Cognito::UserPoolDomain': 'ForgeResources-CognitoUserPoolDomain',
     'Forge::CertificateManager::DnsCertificate': 'ForgeResources-DnsCertificate',
     'Forge::ECR::Cleanup': 'ForgeResources-EcrCleanup',
