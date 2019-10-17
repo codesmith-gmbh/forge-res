@@ -123,42 +123,6 @@ Resources:
       Action: lambda:InvokeFunction
       FunctionName: !GetAtt CognitoUserPoolDomainFunction.Arn
       Principal: cloudformation.amazonaws.com
-  CognitoIdentityProviderFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: ../../codesmith/CloudFormation/CognitoIdentityProvider/
-      Description: Cloudformation Custom Resource for cognito user pool idendity provider
-      Handler: cognito_identity_provider.handler
-      Layers:
-        - !Ref PythonLambdaLayerArn
-      MemorySize: 128
-      Policies:
-        - Version: '2012-10-17'
-          Statement:
-            - Effect: Allow
-              Action:
-                - "cognito-idp:CreateIdentityProvider"
-                - "cognito-idp:DeleteIdentityProvider"
-                - "cognito-idp:UpdateIdentityProvider"
-              Resource:
-                - "*"
-            - Effect: Allow
-              Action:
-                - ssm:GetParameter
-              Resource: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/codesmith-forge/CognitoIdentityProvider/*"
-            - Effect: Allow
-              Action:
-                - kms:Decrypt
-              Resource:
-                - !Ref SsmKmsKeyArn
-      Runtime: python3.7
-      Timeout: 300
-  CognitoIdentityProviderPermission:
-    Type: AWS::Lambda::Permission
-    Properties:
-      Action: lambda:InvokeFunction
-      FunctionName: !GetAtt CognitoIdentityProviderFunction.Arn
-      Principal: cloudformation.amazonaws.com
   DbInstanceResourceIdFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -606,10 +570,6 @@ Outputs:
     Value: !GetAtt CognitoUserPoolDomainFunction.Arn
     Export:
       Name: !Sub "${AWS::StackName}-CognitoUserPoolDomain"
-  CognitoIdentityProvider:
-    Value: !GetAtt CognitoIdentityProviderFunction.Arn
-    Export:
-      Name: !Sub "${AWS::StackName}-CognitoIdentityProvider"
   DbInstanceResourceId:
     Value: !GetAtt DbInstanceResourceIdFunction.Arn
     Export:
