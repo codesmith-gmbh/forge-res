@@ -1,0 +1,30 @@
+ForgeApplicationTemplateVersion: '2019-10-20'
+Description: A Sample Applications
+ArtifactsPrefix: ..
+LambdaLayers:
+  -> ??
+Templates:
+  - Name: BaseDynamoDBTable
+    AppFolder: <path>
+    BuildScript: <rel appfolder path>
+    PackagePrefix: ..
+    Region:
+      Fixed: us-east-1
+  - Name: CloudfrontBarrier
+    Template: <path>
+    PackagePrefix: ..
+    Region:
+      Fixed: us-east-1
+    Parameters:
+      ->
+  - Name: ApiGatewayAplication
+    Template: <path>
+    PackagePrefix: ...
+    Region:
+      Param: true
+    Parameters:
+      ->
+  - Name: argggg
+    Region:
+      Type: Multi
+      AtLeast: us-east-1
