@@ -131,11 +131,11 @@ def process_record(record):
 # 3.1 Delete the certificate
 #
 def delete_certificate(event):
-    properties = validate_properties(resource_properties(event))
     certificate_arn = cfn.physical_resource_id(event)
-    log.msg('deleting certificate', certificate_arn=certificate_arn, properties=properties)
+    log.msg('deleting certificate', certificate_arn=certificate_arn)
     # We delete only if the certificate has been properly created before.
     if c.is_certificate_arn(certificate_arn):
+        properties = validate_properties(resource_properties(event))
         cert_proc = CertificateProcessor(certificate_arn=certificate_arn, properties=properties)
         if not cfn.is_being_replaced(cf, event):
             # This resource may create DNS Records that should be deleted as well. Also there is an SNS parameter
