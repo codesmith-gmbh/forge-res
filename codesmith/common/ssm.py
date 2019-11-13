@@ -1,4 +1,5 @@
 from codesmith.common import cfn
+import codesmith.common.naming as naming
 
 
 def put_string_parameter(ssm, parameter_name, *, value, description):
@@ -28,6 +29,8 @@ def silent_delete_parameter(ssm, parameter_name):
     try:
         ssm.delete_parameter(Name=parameter_name)
     except ssm.exceptions.ParameterNotFound:
+        pass
+    except ssm.exceptions.ClientError:
         pass
     return parameter_name
 

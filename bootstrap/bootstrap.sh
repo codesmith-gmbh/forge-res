@@ -48,10 +48,18 @@ function deployForgeResources() {
     echo "Python Layer Hash: ${PYTHON_LAMBDA_LAYER_HASH}"
 
     rm -fr dist
+    mkdir dist
 
     PYTHON_LAMBDA_LAYER_KEY=.forgeResources/lambdaLayer/${PYTHON_LAMBDA_LAYER_HASH}
-    NEEDS_CREATION=$(aws --region ${1} s3api head-object --bucket ${S3_BUCKET} --key ${PYTHON_LAMBDA_LAYER_KEY} || echo 'yes')
-    if [[ "$NEEDS_CREATION"='yes' ]]; then
+    set +e
+    aws --region ${1} s3api head-object --bucket ${S3_BUCKET} --key ${PYTHON_LAMBDA_LAYER_KEY}
+    LAMBDA_LAYER_EXISTS="$?"
+    set -e
+    echo $LAMBDA_LAYER_EXISTS
+    if [[ "$LAMBDA_LAYER_EXISTS" == "0" ]]; then
+        echo "# reusing the previous python layer"
+        PYTHON_LAMBDA_LAYER_ARN=$(aws lambda --region ${1} list-layer-versions --layer-name ${PYTHON_LAMBDA_LAYER_NAME} | jq -r ".LayerVersions[0].LayerVersionArn")
+    else
         mkdir -p dist/layer/python/codesmith/
         pipenv lock -r >dist/requirements.txt
         pipenv run pip install -t dist/layer/python -r dist/requirements.txt
@@ -62,9 +70,6 @@ function deployForgeResources() {
         zip -r -X layer.zip .
         aws s3 cp layer.zip s3://${S3_BUCKET}/${PYTHON_LAMBDA_LAYER_KEY}
         PYTHON_LAMBDA_LAYER_ARN=$(aws --region ${1} lambda publish-layer-version --layer-name ${PYTHON_LAMBDA_LAYER_NAME} --content S3Bucket=${S3_BUCKET},S3Key=${PYTHON_LAMBDA_LAYER_KEY} --compatible-runtimes python3.7 | jq -r '.LayerVersionArn')
-    else
-        echo "# reusing the previous python layer"
-        PYTHON_LAMBDA_LAYER_ARN=$(aws lambda --region ${1} list-layer-versions --layer-name ${PYTHON_LAMBDA_LAYER_NAME} | jq -r ".LayerVersions[0].LayerVersionArn")
     fi
 
     echo "# Deploying ForgeResources in the ${1} region"
@@ -130,7 +135,7 @@ function main() {
 }
 
 function dev() {
-    deployForgeResources "us-east-1"
+    deployForgeResources "eu-central-1"
 }
 
 case $1 in

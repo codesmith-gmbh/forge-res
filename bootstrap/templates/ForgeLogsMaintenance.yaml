@@ -19,7 +19,6 @@ Resources:
   LogsMaintenanceFunction:
     Type: AWS::Serverless::Function
     Properties:
-      AutoPublishAlias: live
       CodeUri: ../../codesmith/CloudwatchLogs/LogsMaintenance
       Environment:
         Variables:

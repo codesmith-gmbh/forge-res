@@ -26,9 +26,9 @@ properties_schema = tolerant_schema({
 
 def validate_properties(properties):
     p = properties_schema.validate(properties)
-    if p.expression is None:
-        p.expression = 'x'
-    expression_parser.parse(p.expression)
+    if 'expression' not in p:
+        p['expression'] = 'x'
+    expression_parser.parse(p['expression'])
     return Box(p, camel_killer_box=True)
 
 
@@ -40,7 +40,7 @@ def create(event, _):
 
 
 def put_sequence_parameter(properties):
-    parameter_name = naming.sequence_parameter_name(properties.parameter_name)
+    parameter_name = naming.sequence_parameter_name(properties.sequence_name)
     return put_string_parameter(ssm, parameter_name,
                                 value=properties.expression,
                                 description=SSM_PARAMETER_DESCRIPTION)
