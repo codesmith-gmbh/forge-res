@@ -41,9 +41,10 @@ def create(event, _):
 
 def put_sequence_parameter(properties):
     parameter_name = naming.sequence_parameter_name(properties.sequence_name)
-    return put_string_parameter(ssm, parameter_name,
-                                value=properties.expression,
-                                description=SSM_PARAMETER_DESCRIPTION)
+    put_string_parameter(ssm, parameter_name,
+                         value=properties.expression,
+                         description=SSM_PARAMETER_DESCRIPTION)
+    return parameter_name
 
 
 @helper.delete

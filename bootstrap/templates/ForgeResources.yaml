@@ -441,7 +441,7 @@ Resources:
     Properties:
       CodeUri: ../../codesmith/CloudFormation/SequenceValue/
       Description: Cloudformation Custom Resource for Sequence Values
-      Handler: sequence_value.process_event
+      Handler: sequence_value.handler
       Layers:
         - !Ref PythonLambdaLayerArn
       MemorySize: 128

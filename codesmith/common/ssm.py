@@ -1,10 +1,9 @@
 from codesmith.common import cfn
-import codesmith.common.naming as naming
 
 
 def put_string_parameter(ssm, parameter_name, *, value, description):
     try:
-        ssm.put_parameter(
+        return ssm.put_parameter(
             Name=parameter_name,
             Description=description,
             Value=value,
@@ -14,7 +13,6 @@ def put_string_parameter(ssm, parameter_name, *, value, description):
         )
     except ssm.exceptions.ClientError as e:
         raise RuntimeError(f'Cannot put parameter with name {parameter_name}') from e
-    return parameter_name
 
 
 def fetch_string_parameter(ssm, parameter_name):

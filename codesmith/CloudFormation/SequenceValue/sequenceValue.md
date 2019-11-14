@@ -13,14 +13,14 @@ MySequenceValue:
   Type: Custom::SequenceValue
   Properties:
     ServiceToken: !ImportValue ForgeResources-SequenceValue
-    SequenceName: !Ref Sequence
+    Sequence: !Ref Sequence
 ```
 
 ## Properties
 
-`SequenceName`
+`Sequence`
 
-> The name of the sequence to draw a value from
+> The sequence to draw a value from
 
 _Type_: String
 

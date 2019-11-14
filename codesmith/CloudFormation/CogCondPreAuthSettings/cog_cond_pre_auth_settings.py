@@ -36,9 +36,10 @@ def create(event, _):
     p = validate_properties(resource_properties(event))
     parameter_name = naming.cog_cond_pre_auth_parameter_name(p.user_pool_id, p.user_pool_client_id)
     parameter_value = json.dumps({'All': p.all, 'Domains': p.domains, 'Emails': p.emails})
-    return put_string_parameter(ssm, parameter_name,
-                                value=parameter_value,
-                                description='Forge Cognito Pre Auth Settings Parameter')
+    put_string_parameter(ssm, parameter_name,
+                         value=parameter_value,
+                         description='Forge Cognito Pre Auth Settings Parameter')
+    return parameter_name
 
 
 @helper.delete

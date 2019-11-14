@@ -17,7 +17,7 @@ logger.setLevel(logging.INFO)
 ssm = boto3.client('ssm')
 
 properties_schema = tolerant_schema({
-    'SequenceName': non_empty_string
+    'Sequence': non_empty_string
 })
 
 
@@ -41,9 +41,9 @@ def create(event, _):
 
 
 def next_value(properties):
-    sequence_name = naming.sequence_parameter_name(properties.sequence_name)
-    expression = fetch_string_parameter(ssm, sequence_name)
-    n = put_string_parameter(ssm, sequence_name,
+    parameter_name = properties.sequence
+    expression = fetch_string_parameter(ssm, parameter_name)
+    n = put_string_parameter(ssm, parameter_name,
                              value=expression,
                              description=SSM_PARAMETER_DESCRIPTION)
     version = n['Version']
@@ -52,7 +52,7 @@ def next_value(properties):
 
 
 def physical_resource_id(event, properties):
-    return '{0}-{1}'.format(logical_resource_id(event), properties.sequence_name)
+    return '{0}-{1}'.format(logical_resource_id(event), properties.sequence)
 
 
 @helper.delete
