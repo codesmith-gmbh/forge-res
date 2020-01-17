@@ -42,7 +42,7 @@ def validate_properties(properties):
     p = box(properties, schema=properties_schema)
     hosted_zone_name = p.get('HostedZoneName')
     hosted_zone_id = p.get('HostedZoneId')
-    if hosted_zone_name is None and hosted_zone_id is None:
+    if (not hosted_zone_name) and (not hosted_zone_id):
         raise ValueError('one of HostedZoneName or HostedZoneId must be defined')
     if hosted_zone_name and hosted_zone_id:
         raise ValueError('only of HostedZoneName or HostedZoneId may be defined')

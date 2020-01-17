@@ -1,0 +1,306 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Forge Cloudformation Resources
+Conditions:
+  IsUsEast1:
+    Fn::Equals: [!Sub "${AWS::Region}", "us-east-1"]
+Mappings:
+  FunctionNaming:
+    CloudFront:
+      FolderRewrite: ForgeCloudFrontRootRewrite
+Parameters:
+  Version:
+    Type: String
+  SsmKmsKeyArn:
+    Type: String
+  PythonLambdaLayerHash:
+    Type: String
+  PythonLambdaLayerArn:
+    Type: String
+Resources:
+  # 2. Cloudformation
+  AcmCertificateSNSTopic:
+    Type: AWS::SNS::Topic
+  AcmCertificateTrigger:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../../codesmith/CloudFormation/SnsStepFunctionTrigger/
+      Description: Trigger for AcmCertificate State Machine
+      Environment:
+        Variables:
+          STATE_MACHINE_ARN: !Ref AcmCertificateStateMachine
+      Events:
+        Trigger:
+          Type: SNS
+          Properties:
+            Topic: !Ref AcmCertificateSNSTopic
+      Handler: step_function_trigger.handler
+      Layers:
+        - !Ref PythonLambdaLayerArn
+      MemorySize: 128
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Sid: states
+              Effect: Allow
+              Action:
+                - "states:startExecution"
+              Resource:
+                - !Ref AcmCertificateStateMachine
+      Runtime: python3.7
+      Timeout: 300
+  AcmCertificateStateMachineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - !Sub states.${AWS::Region}.amazonaws.com
+            Action: "sts:AssumeRole"
+      Policies:
+        - PolicyName: lambda
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "lambda:InvokeFunction"
+                Resource:
+                  - !GetAtt AcmCertificateFunction.Arn
+  AcmCertificateStateMachine:
+    Type: AWS::StepFunctions::StateMachine
+    Properties:
+      DefinitionString:
+        Fn::Sub:
+          - |
+            {
+              "StartAt": "Function",
+              "States": {
+                "Function": {
+                  "Type": "Task",
+                  "Resource": "${CertificateFunctionArn}",
+                  "Next": "Switch"
+                },
+                "Switch": {
+                  "Type": "Choice",
+                  "Choices": [
+                    {
+                      "Variable": "$.IsDone",
+                      "BooleanEquals": true,
+                      "Next": "Finish"
+                    },
+                    {
+                      "Variable": "$.IsDone",
+                      "BooleanEquals": false,
+                      "Next": "Wait"
+                    }
+                  ]
+                },
+                "Wait": {
+                  "Type": "Wait",
+                  "Seconds": 60,
+                  "Next": "Function"
+                },
+                "Finish": {
+                  "Type": "Succeed"
+                }
+              }
+            }
+          - CertificateFunctionArn: !GetAtt AcmCertificateFunction.Arn
+      RoleArn: !GetAtt AcmCertificateStateMachineRole.Arn
+  AcmCertificateFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../../codesmith/CloudFormation/AcmCertificate/
+      Description: Function to create/update and delete an ACM certificate inside a step functions state machine
+      Handler: acm_certificate.handler
+      Layers:
+        - !Ref PythonLambdaLayerArn
+      MemorySize: 128
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Sid: acm
+              Effect: Allow
+              Action:
+                - "acm:*"
+              Resource:
+                - "*"
+      Runtime: python3.7
+      Timeout: 300
+  AcmIssuedCertificateSNSTopic:
+    Type: AWS::SNS::Topic
+  AcmIssuedCertificateTrigger:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../../codesmith/CloudFormation/SnsStepFunctionTrigger/
+      Description: Trigger for AcmCertificateIssueWaitCondition State Machine
+      Environment:
+        Variables:
+          STATE_MACHINE_ARN: !Ref AcmIssuedCertificateStateMachine
+      Events:
+        Trigger:
+          Type: SNS
+          Properties:
+            Topic: !Ref AcmIssuedCertificateSNSTopic
+      Handler: step_function_trigger.handler
+      Layers:
+        - !Ref PythonLambdaLayerArn
+      MemorySize: 128
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Sid: states
+              Effect: Allow
+              Action:
+                - "states:startExecution"
+              Resource:
+                - !Ref AcmIssuedCertificateStateMachine
+      Runtime: python3.7
+      Timeout: 300
+  AcmIssuedCertificateStateMachineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - !Sub states.${AWS::Region}.amazonaws.com
+            Action: "sts:AssumeRole"
+      Policies:
+        - PolicyName: lambda
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "lambda:InvokeFunction"
+                Resource:
+                  - !GetAtt AcmIssuedCertificateFunction.Arn
+  AcmIssuedCertificateStateMachine:
+    Type: AWS::StepFunctions::StateMachine
+    Properties:
+      DefinitionString:
+        Fn::Sub:
+          - |
+            {
+              "StartAt": "Function",
+              "States": {
+                "Function": {
+                  "Type": "Task",
+                  "Resource": "${ConditionFunctionArn}",
+                  "Next": "Switch"
+                },
+                "Switch": {
+                  "Type": "Choice",
+                  "Choices": [
+                    {
+                      "Variable": "$.IsDone",
+                      "BooleanEquals": true,
+                      "Next": "Finish"
+                    },
+                    {
+                      "Variable": "$.IsDone",
+                      "BooleanEquals": false,
+                      "Next": "Wait"
+                    }
+                  ]
+                },
+                "Wait": {
+                  "Type": "Wait",
+                  "Seconds": 60,
+                  "Next": "Function"
+                },
+                "Finish": {
+                  "Type": "Succeed"
+                }
+              }
+            }
+          - ConditionFunctionArn: !GetAtt AcmIssuedCertificateFunction.Arn
+      RoleArn: !GetAtt AcmIssuedCertificateStateMachineRole.Arn
+  AcmIssuedCertificateFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../../codesmith/CloudFormation/AcmIssuedCertificate/
+      Description: Function to check whether an ACM certificate has been issued, inside a step functions state machine
+      Handler: acm_issued_certificate.handler
+      Layers:
+        - !Ref PythonLambdaLayerArn
+      MemorySize: 128
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Sid: acm
+              Effect: Allow
+              Action:
+                - "acm:DescribeCertificate"
+                - "acm:GetCertificate"
+                - "acm:ListCertificates"
+                - "acm:ListTagsForCertificate"
+              Resource:
+                - "*"
+      Runtime: python3.7
+      Timeout: 300
+  Route53CertificateRecordSetGroupFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../../codesmith/CloudFormation/Route53CertificateRecordSetGroup/
+      Description: CloudFormation Custom Resource to insert Route53 DNS verification records
+      Handler: certificate_record_set_group.handler
+      Layers:
+        - !Ref PythonLambdaLayerArn
+      MemorySize: 128
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Sid: acm
+              Effect: Allow
+              Action:
+                - "acm:DescribeCertificate"
+                - "acm:GetCertificate"
+              Resource:
+                - "*"
+            - Sid: route53
+              Effect: Allow
+              Action:
+                - "route53:GetHostedZone"
+                - "route53:ListHostedZones"
+                - "route53:ListHostedZonesByName"
+                - "route53:ChangeResourceRecordSets"
+                - "route53:GetChange"
+              Resource:
+                - "*"
+      Runtime: python3.7
+      Timeout: 300
+  Route53CertificateRecordSetGroupPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt Route53CertificateRecordSetGroupFunction.Arn
+      Principal: cloudformation.amazonaws.com
+Outputs:
+  AcmCertificate:
+    Value: !Ref AcmCertificateSNSTopic
+    Export:
+      Name: !Sub "${AWS::StackName}-AcmCertificate"
+  AcmIssuedCertificate:
+    Value: !Ref AcmIssuedCertificateSNSTopic
+    Export:
+      Name: !Sub "${AWS::StackName}-AcmIssuedCertificate"
+  Route53CertificateRecordSetGroup:
+    Value: !GetAtt Route53CertificateRecordSetGroupFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-Route53CertificateRecordSetGroup"
+  Version:
+    Value: !Ref Version
+    Export:
+      Name: !Sub "${AWS::StackName}-Version"
+  PythonLambdaLayerHash:
+    Value: !Ref PythonLambdaLayerHash
+    Export:
+      Name: !Sub "${AWS::StackName}-PythonLambdaLayerHash"

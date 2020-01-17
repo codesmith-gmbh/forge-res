@@ -1,0 +1,18 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: [ForgeResources]
+Description: Test
+Resources:
+  Certificate:
+    Type: Forge::CertificateManager::Certificate
+    Properties:
+      DomainName: test-new-acm.codesmith.ch
+      Region: us-east-1
+  Route53:
+    Type: Forge::Route53::CertificateRecordSetGroup
+    Properties:
+      CertificateArn: !Ref Certificate
+      HostedZoneName: codesmith.ch
+  IssuedCertificate:
+    Type: Forge::CertificateManager::IssuedCertificate
+    Properties:
+      CertificateArn: !Ref Certificate

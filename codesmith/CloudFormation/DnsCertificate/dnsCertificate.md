@@ -1,4 +1,7 @@
-# Dns Certificate
+# Dns Certificate (OBSOLETE!!)
+
+**OBSOLETE**: Use AcmCertificate, AcmCertificateDns?? and AcmCertificateIssueWait
+together with the helper AcmVerifiedCertificate (expends into these 3 resources).
 
 As of 2018-07-10, cloudformation does not support a ACM SSL
 certification with DNS verification, only the old method via email. This

@@ -1,0 +1,25 @@
+[tool.poetry]
+name = "forge-res"
+version = "0.1.0"
+description = "Resources for Cloudformation"
+authors = ["Stanislas Nanchen <240862+stanislas@users.noreply.github.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.7"
+crhelper = "^2.0.4"
+python-box = "^4.0.4"
+schema = "^0.7.1"
+fastjsonschema = "^2.14.2"
+lark-parser = "^0.7.8"
+structlog = "^19.2.0"
+
+
+[tool.poetry.dev-dependencies]
+boto3 = "^1.11.6"
+pyyaml = "^5.3"
+colorama = "^0.4.3"
+
+
+[build-system]
+requires = ["poetry>=1.0.2"]
+build-backend = "poetry.masonry.api"
