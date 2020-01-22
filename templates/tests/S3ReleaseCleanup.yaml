@@ -1,0 +1,10 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: [ForgeResources]
+Description: test
+Resources:
+  ReleaseCleanup:
+    Type: Forge::S3::ReleaseCleanup
+    Properties:
+      Bucket: "eu-west-1.forge.artifacts.codesmith.ch"
+      CurrentReleasePrefix: "test/3"
+      ReleaseCountNumber: 2

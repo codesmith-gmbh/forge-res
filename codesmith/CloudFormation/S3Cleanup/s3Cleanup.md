@@ -1,5 +1,8 @@
 # S3 Cleanup: custom CloudFormation resource
 
+**OBSOLETE**: Use the S3ReleaseCleanup resources instead; this resource is too dangerous and you might
+loose data.
+
 The `s3Cleanup` CloudFormation custom resource cleans up S3 buckets.
 
 The resource either deletes all objects of an S3 buckets (useful when deleting a stack containing an S3

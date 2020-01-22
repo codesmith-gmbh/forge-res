@@ -23,11 +23,10 @@ def dns_certificate_sns_message_id_parameter_name(stack_arn, logical_resource_id
     return '{0}/DnsCertificateSnsMessageId/{1}/{2}'.format(SSM_PARAMETER_PREFIX, stack_id, logical_resource_id)
 
 
-# SNS CloudFormation Skip detection memory
-def sns_message_skip_detection_parameter_name(stack_arn, logical_resource_id):
+# S3ReleaseCleanup store
+def s3_release_cleanup_parameter_name(stack_arn, logical_resource_id):
     stack_id = extract_stack_id(stack_arn)
-    return '{0}/SnsMessageSkipDetection/{1}/{2}'.format(SSM_PARAMETER_PREFIX, stack_id, logical_resource_id)
-
+    return '{0}/S3ReleaseCleanup/{1}/{2}'.format(SSM_PARAMETER_PREFIX, stack_id, logical_resource_id)
 
 
 STACK_ID_REGEX = re.compile('^arn:.*:cloudformation:.*:.*:stack/(.*)')

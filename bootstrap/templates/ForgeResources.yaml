@@ -669,6 +669,44 @@ Resources:
       Action: lambda:InvokeFunction
       FunctionName: !GetAtt S3CleanupFunction.Arn
       Principal: cloudformation.amazonaws.com
+  S3ReleaseCleanupFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../../codesmith/CloudFormation/S3ReleaseCleanup/
+      Description: CloudFormation Custom Resource to cleanup releases on S3
+      Handler: s3_release_cleanup.handler
+      Layers:
+        - !Ref PythonLambdaLayerArn
+      MemorySize: 128
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Sid: s3cf
+              Effect: Allow
+              Action:
+                - "s3:*"
+                - "cloudformation:DescribeStacks"
+              Resource:
+                - "*"
+            - Effect: Allow
+              Sid: ssm
+              Action:
+                - "ssm:DeleteParameter"
+                - "ssm:DescribeParameters"
+                - "ssm:GetParametersByPath"
+                - "ssm:GetParameter"
+                - "ssm:GetParameters"
+                - "ssm:PutParameter"
+              Resource:
+                - "arn:aws:ssm:*:*:parameter/codesmith-forge/S3ReleaseCleanup/*"
+      Runtime: python3.7
+      Timeout: 300
+  S3ReleaseCleanupPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt S3ReleaseCleanupFunction.Arn
+      Principal: cloudformation.amazonaws.com
   SequenceFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -866,6 +904,10 @@ Outputs:
     Value: !GetAtt S3CleanupFunction.Arn
     Export:
       Name: !Sub "${AWS::StackName}-S3Cleanup"
+  S3ReleaseCleanup:
+    Value: !GetAtt S3ReleaseCleanupFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-S3ReleaseCleanup"
   Sequence:
     Value: !GetAtt SequenceFunction.Arn
     Export:

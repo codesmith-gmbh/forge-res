@@ -18,6 +18,7 @@ SERVICE_TOKENS = {
     'Forge::RDS::DbInstanceResourceId': 'ForgeResources-DbInstanceResourceId',
     'Forge::Route53::CertificateRecordSetGroup': 'ForgeResources-Route53CertificateRecordSetGroup',
     'Forge::S3::Cleanup': 'ForgeResources-S3Cleanup',
+    'Forge::S3::ReleaseCleanup': 'ForgeResources-S3ReleaseCleanup',
     'Forge::Utils::Sequence': 'ForgeResources-Sequence',
     'Forge::Utils::SequenceValue': 'ForgeResources-SequenceValue',
 }

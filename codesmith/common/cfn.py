@@ -26,12 +26,19 @@ def old_resource_properties(event):
     return event.get('OldResourceProperties')
 
 
-def is_stack_delete_in_progress(cf, event):
+def stack_status(cf, event):
     stacks = cf.describe_stacks(
         StackName=stack_id(event),
     )
-    stack_status = stacks['Stacks'][0]['StackStatus']
-    return stack_status == 'DELETE_IN_PROGRESS'
+    return stacks['Stacks'][0]['StackStatus']
+
+
+def is_stack_delete_in_progress(cf, event):
+    return stack_status(cf, event) == 'DELETE_IN_PROGRESS'
+
+
+def is_stack_rollback_complete_cleanup_in_progress(cf, event):
+    return stack_status(cf, event) == 'UPDATE_ROLLBACK_COMPLETE_CLEANUP_IN_PROGRESS'
 
 
 #

@@ -1,3 +1,5 @@
+import json
+
 from codesmith.common import cfn
 
 
@@ -21,6 +23,16 @@ def fetch_string_parameter(ssm, parameter_name):
         WithDecryption=True
     )
     return parameter['Parameter']['Value']
+
+
+def put_json_parameter(ssm, parameter_name, *, value, description):
+    return put_string_parameter(ssm, parameter_name,
+                                value=json.dumps(value),
+                                description=description)
+
+
+def fetch_json_parameter(ssm, parameter_name):
+    return json.loads(fetch_string_parameter(ssm, parameter_name))
 
 
 def silent_delete_parameter(ssm, parameter_name):
