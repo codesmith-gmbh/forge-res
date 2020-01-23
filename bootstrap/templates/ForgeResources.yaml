@@ -23,14 +23,14 @@ Resources:
     Type: Custom::S3Cleanup
     Properties:
       ServiceToken: !GetAtt S3CleanupFunction.Arn
-      ActiveOnlyOnStackDeletion: false
+      ActiveOnlyOnStackDeletion: true
       Bucket: !ImportValue ForgeBuckets-ArtifactsBucketName
       Prefix: !Sub ".forgeResources/${Version}"
   S3PythonLambdaLayerCleanup:
     Type: Custom::S3Cleanup
     Properties:
       ServiceToken: !GetAtt S3CleanupFunction.Arn
-      ActiveOnlyOnStackDeletion: false
+      ActiveOnlyOnStackDeletion: true
       Bucket: !ImportValue ForgeBuckets-ArtifactsBucketName
       Prefix: !Sub ".forgeResources/pythonLayer/${PythonLambdaLayerHash}"
   # 2. Cloudformation
