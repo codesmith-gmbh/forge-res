@@ -854,6 +854,11 @@ Resources:
       Role: !GetAtt CloudFrontFolderRewriteRole.Arn
       Runtime: python3.7
       Timeout: 5
+  CloudFrontFolderRewriteFunctionVersion1:
+    Type: AWS::Lambda::Version
+    Properties:
+      Description: Latest Snapshot for CloudFrontFolderRewriteFunction
+      FunctionName: !GetAtt CloudFrontFolderRewriteFunction.Arn
 Outputs:
   AcmCertificate:
     Value: !Ref AcmCertificateSNSTopic
@@ -927,6 +932,10 @@ Outputs:
             Fn::FindInMap: [FunctionNaming, CloudFront, FolderRewrite]
     Export:
       Name: !Sub "${AWS::StackName}-CloudFrontFolderRewrite"
+  CloudFrontFolderRewriteVersion:
+    Value: !Ref CloudFrontFolderRewriteFunctionVersion1
+    Export:
+      Name: !Sub "${AWS::StackName}-CloudFrontFolderRewriteVersion"
   Version:
     Value: !Ref Version
     Export:

@@ -6,6 +6,7 @@ def handler(event, _):
     uri = request['uri']
     # We consider "file" names without dot to be folders
     if '.' not in Path(uri).name:
-        prefix = 'index.html' if uri.endswith('/') else '/index.html'
-        request['uri'] += prefix
+        # We ensure that '/index.hml' is at the end of the folder url
+        suffix = 'index.html' if uri.endswith('/') else '/index.html'
+        request['uri'] += suffix
     return request

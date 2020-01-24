@@ -193,7 +193,7 @@ function main() {
 }
 
 function dev() {
-    deployForgeResources "eu-west-1"
+    deployForgeResources "us-east-1"
 }
 
 case $1 in
