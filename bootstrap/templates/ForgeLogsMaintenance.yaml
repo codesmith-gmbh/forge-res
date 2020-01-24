@@ -9,7 +9,7 @@ Resources:
     Type: Custom::S3Cleanup
     Properties:
       ServiceToken: !ImportValue ForgeResources-S3Cleanup
-      ActiveOnlyOnStackDeletion: false
+      ActiveOnlyOnStackDeletion: true
       Bucket: !ImportValue ForgeBuckets-ArtifactsBucketName
       Prefix: !Sub ".forgeLogChecker/${Version}"
   AlertTopic:
