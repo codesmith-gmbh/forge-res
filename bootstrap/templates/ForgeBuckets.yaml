@@ -6,6 +6,7 @@ Parameters:
 Resources:
   ArtifactsBucket:
     Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
     Properties:
       BucketName: !Sub "${AWS::Region}.forge.artifacts.${ForgeDomainName}"
       BucketEncryption:
@@ -41,6 +42,7 @@ Resources:
                   - Arn: !GetAtt ArtifactsBucket.Arn
   CodePipelineBucket:
     Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
     Properties:
       BucketName: !Sub "${AWS::Region}.forge.codepipeline.${ForgeDomainName}"
       LifecycleConfiguration:
@@ -49,6 +51,7 @@ Resources:
             Status: Enabled
   EventsBucket:
     Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
     Properties:
       BucketName: !Sub "${AWS::Region}.forge.events.${ForgeDomainName}"
       BucketEncryption:
@@ -81,6 +84,7 @@ Resources:
       S3KeyPrefix: !Ref EventsBucket
   CloudfrontLogsBucket:
     Type: "AWS::S3::Bucket"
+    DeletionPolicy: Retain
     Properties:
       BucketEncryption:
         ServerSideEncryptionConfiguration:
