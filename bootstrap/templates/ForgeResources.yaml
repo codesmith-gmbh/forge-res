@@ -847,7 +847,6 @@ Resources:
     Type: AWS::Serverless::Function
     Condition: IsUsEast1
     Properties:
-      AutoPublishAlias: live
       FunctionName:
         Fn::FindInMap: [FunctionNaming, CloudFront, FolderRewrite]
       CodeUri: ../../codesmith/Cloudfront/FolderRewrite/
