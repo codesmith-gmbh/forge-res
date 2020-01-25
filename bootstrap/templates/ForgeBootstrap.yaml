@@ -89,6 +89,7 @@ Resources:
                   - "arn:aws:cloudformation:*:*:stack/ForgeBuckets/*"
                   - "arn:aws:cloudformation:*:*:stack/ForgeResources/*"
                   - "arn:aws:cloudformation:*:aws:transform/Serverless-2016-10-31"
+                  - !Sub "arn:aws:cloudformation:*:${AWS::AccountId}:transform/ForgeResources"
   BootstrapCodeBuildRole:
     Type: AWS::IAM::Role
     Properties:

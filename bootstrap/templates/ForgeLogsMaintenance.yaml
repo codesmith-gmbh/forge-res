@@ -5,8 +5,8 @@ Parameters:
   Version:
     Type: String
 Resources:
-  S3ReleaseCleanup:
-    Type: ForgeResources-S3ReleaseCleanup
+  ReleaseCleanup:
+    Type: Forge::S3::ReleaseCleanup
     Properties:
       Bucket: !ImportValue ForgeBuckets-ArtifactsBucketName
       CurrentReleasePrefix: !Sub ".forgeLogChecker/${Version}"
