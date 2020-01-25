@@ -19,20 +19,20 @@ Parameters:
     Type: String
 Resources:
   # 1. S3 Release Cleanup Forge resources and Python layer
-  S3ReleaseCleanup:
-    Type: Custom::S3Cleanup
+  ReleaseCleanup:
+    Type: Custom::S3ReleaseCleanup
     Properties:
-      ServiceToken: !GetAtt S3CleanupFunction.Arn
-      ActiveOnlyOnStackDeletion: true
+      ServiceToken: !GetAtt S3ReleaseCleanupFunction.Arn
       Bucket: !ImportValue ForgeBuckets-ArtifactsBucketName
-      Prefix: !Sub ".forgeResources/${Version}"
-  S3PythonLambdaLayerCleanup:
-    Type: Custom::S3Cleanup
+      CurrentReleasePrefix: !Sub ".forgeResources/${Version}"
+      ReleaseCountNumber: 10
+  PythonLambdaLayerCleanup:
+    Type: Custom::S3ReleaseCleanup
     Properties:
-      ServiceToken: !GetAtt S3CleanupFunction.Arn
-      ActiveOnlyOnStackDeletion: true
+      ServiceToken: !GetAtt S3ReleaseCleanupFunction.Arn
       Bucket: !ImportValue ForgeBuckets-ArtifactsBucketName
-      Prefix: !Sub ".forgeResources/pythonLayer/${PythonLambdaLayerHash}"
+      CurrentReleasePrefix: !Sub ".forgeResources/pythonLayer/${PythonLambdaLayerHash}"
+      ReleaseCountNumber: 10
   # 2. Cloudformation
   AcmCertificateSNSTopic:
     Type: AWS::SNS::Topic

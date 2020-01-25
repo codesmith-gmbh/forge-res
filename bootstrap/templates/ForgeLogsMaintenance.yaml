@@ -1,17 +1,16 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Transform: AWS::Serverless-2016-10-31
+Transform: [ForgeResources, AWS::Serverless-2016-10-31]
 Description: A weekly job to set the log groups to a default and gc empty log groups.
 Parameters:
   Version:
     Type: String
 Resources:
   S3ReleaseCleanup:
-    Type: Custom::S3Cleanup
+    Type: ForgeResources-S3ReleaseCleanup
     Properties:
-      ServiceToken: !ImportValue ForgeResources-S3Cleanup
-      ActiveOnlyOnStackDeletion: true
       Bucket: !ImportValue ForgeBuckets-ArtifactsBucketName
-      Prefix: !Sub ".forgeLogChecker/${Version}"
+      CurrentReleasePrefix: !Sub ".forgeLogChecker/${Version}"
+      ReleaseCountNumber: 10
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
