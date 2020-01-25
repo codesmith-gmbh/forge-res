@@ -1,7 +1,7 @@
 # S3 Cleanup: custom CloudFormation resource
 
-**OBSOLETE**: Use the S3ReleaseCleanup resources instead; this resource is too dangerous and you might
-loose data.
+**WARNING**: Use the S3ReleaseCleanup to regularly cleanup resources; this resource is meant
+to be used when deleting an application.
 
 The `s3Cleanup` CloudFormation custom resource cleans up S3 buckets.
 
@@ -9,14 +9,8 @@ The resource either deletes all objects of an S3 buckets (useful when deleting a
 Bucket that should be deleted as well) or it deletes objects under a given prefix (useful when deleting
 a stack that uses an S3 bucket shared among many stacks).
 
-When the flag `ActiveOnlyOnStackDeletion` is true (default), the `s3Cleanup` custom resource only deletes objects
+The `s3Cleanup` custom resource only deletes objects
 when the stack itself is being deleted. It also safe to remove the resource from an existing stack.
-
-When the flag `ActiveOnlyOnStackDeletion` is false, the the `s3Cleanup` custom resource deletes objects whenever it is
-itself deleted.
-
-Typical usage for `ActiveOnlyOnStackDeletion` on false are for bucket paths that are to store release dependent artifacts.
-When a new release is created, the `s3Cleanup` resource is replaced and the old artifacts are deleted during stack cleanup.
 
 ## Syntax
 
@@ -33,18 +27,6 @@ MyS3Cleanup:
 ```
 
 ## Properties
-
-`ActiveOnlyOnStackDeletion`
-
-> Informs the resource when to delete objects from the s3 bucket. If the flag is true, then the resource deletes
-> objects if and only if the stack is being deleted. If the flag is false, then the resource deletes objects if
-> it is itself being deleted irrespective to the status of the stack.
->
-> _Type_: Boolean
-> 
-> _Required_: No
->
-> _Update Requires_: no interruption
 
 `Bucket`
 

@@ -7,7 +7,7 @@ from schema import Optional
 
 import codesmith.common.cfn as cfn
 from codesmith.common.cfn import logical_resource_id, resource_properties
-from codesmith.common.schema import encoded_bool, non_empty_string, tolerant_schema
+from codesmith.common.schema import non_empty_string, tolerant_schema
 
 helper = CfnResource()
 logger = logging.getLogger(__name__)
@@ -20,7 +20,6 @@ properties_schema = tolerant_schema({
     'Bucket': non_empty_string,
 
     Optional('Prefix', default=''): str,
-    Optional('ActiveOnlyOnStackDeletion', default=True): encoded_bool
 })
 
 
@@ -42,7 +41,7 @@ def physical_resource_id(event, properties):
 @helper.delete
 def delete(event, _):
     properties = validate_properties(resource_properties(event))
-    if has_valid_physical_resource_id(event, properties) and should_delete(event, properties):
+    if has_valid_physical_resource_id(event, properties) and should_delete(event):
         delete_objects(properties)
     return cfn.physical_resource_id(event)
 
@@ -51,8 +50,8 @@ def has_valid_physical_resource_id(event, properties):
     return cfn.physical_resource_id(event) == physical_resource_id(event, properties)
 
 
-def should_delete(event, properties):
-    return not properties.active_only_on_stack_deletion or cfn.is_stack_delete_in_progress(cf, event)
+def should_delete(event):
+    return cfn.is_stack_delete_in_progress(cf, event)
 
 
 def delete_objects(properties):
