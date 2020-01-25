@@ -4,10 +4,6 @@ Description: Forge Cloudformation Resources
 Conditions:
   IsUsEast1:
     Fn::Equals: [!Sub "${AWS::Region}", "us-east-1"]
-Mappings:
-  FunctionNaming:
-    CloudFront:
-      FolderRewrite: ForgeCloudFrontRootRewrite
 Parameters:
   Version:
     Type: String
@@ -826,34 +822,6 @@ Resources:
       Action: lambda:InvokeFunction
       FunctionName: !GetAtt CogCondPreAuthFunction.Arn
       Principal: cognito-idp.amazonaws.com
-  # 5. CloudFront
-  CloudFrontFolderRewriteRole:
-    Type: AWS::IAM::Role
-    Condition: IsUsEast1
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service:
-                - 'lambda.amazonaws.com'
-                - 'edgelambda.amazonaws.com'
-            Action:
-              - 'sts:AssumeRole'
-      ManagedPolicyArns:
-        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
-  CloudFrontFolderRewriteFunction:
-    Type: AWS::Serverless::Function
-    Condition: IsUsEast1
-    Properties:
-      FunctionName:
-        Fn::FindInMap: [FunctionNaming, CloudFront, FolderRewrite]
-      CodeUri: ../../codesmith/Cloudfront/FolderRewrite/
-      Handler: folder_rewrite.handler
-      Role: !GetAtt CloudFrontFolderRewriteRole.Arn
-      Runtime: python3.7
-      Timeout: 5
 Outputs:
   AcmCertificate:
     Value: !Ref AcmCertificateSNSTopic
@@ -919,14 +887,6 @@ Outputs:
     Value: !GetAtt PipelineTriggerFunction.Arn
     Export:
       Name: !Sub "${AWS::StackName}-PipelineTrigger"
-  CloudFrontFolderRewrite:
-    Value:
-      Fn::Sub:
-        - "arn:aws:lambda:us-east-1:${AWS::AccountId}:function:${Name}"
-        - Name:
-            Fn::FindInMap: [FunctionNaming, CloudFront, FolderRewrite]
-    Export:
-      Name: !Sub "${AWS::StackName}-CloudFrontFolderRewrite"
   Version:
     Value: !Ref Version
     Export:
