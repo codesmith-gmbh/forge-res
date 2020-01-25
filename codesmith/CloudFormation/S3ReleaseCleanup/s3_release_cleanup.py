@@ -3,6 +3,7 @@ import traceback
 import boto3
 import structlog
 from crhelper import CfnResource
+from schema import Optional
 
 import codesmith.common.cfn as cfn
 import codesmith.common.naming as naming
@@ -23,7 +24,7 @@ ssm = boto3.client('ssm')
 properties_schema = tolerant_schema({
     'Bucket': non_empty_string,
     'CurrentReleasePrefix': non_empty_string,
-    'ReleaseCountNumber': encoded_int,
+    Optional('ReleaseCountNumber', default=10): encoded_int
 })
 
 
